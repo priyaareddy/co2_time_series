@@ -111,7 +111,7 @@ p5 <- co2_ts%>%
 >Observations:
 - Time Series: From the CO2 Over Time plot, there is an obvious trend of increasing levels throughout time, and we can some regular oscillations which could mean there is seasonality in the data.
 - ACF: There's a gradual decay in the ACF values over the lags, perhaps indicating there is a trend in the data. 
-- PACF:
+- PACF: PACF cuts off to zero after lag 2 and stays that way. However, at lags 12 and 13, the values become significant again. This suggests that although the model exhibits AR model-like behavior, there's some deviances in the data.
 - Distribution: 
 
 ```{r}
@@ -244,9 +244,31 @@ Create a data pipeline that starts by reading from the appropriate URL, and ends
 
 Conduct the same EDA on this data. Describe how the Keeling Curve evolved from 1997 to the present, noting where the series seems to be following similar trends to the series that you "evaluated in 1997" and where the series seems to be following different trends. This EDA can use the same, or very similar tools and views as you provided in your 1997 report. 
 
+```{r}
+co2_new <- read.csv("./co2_weekly_mlo.csv", header = TRUE, skip = 51)
+head(co2_new)
+columns = c('year', 'month', 'day', 'average', 'ndays')
+
+co2_new <- co2_new[columns]
+co2_new <- co2_new %>%
+  filter(ndays != 0) %>%
+  mutate(time_index = make_datetime(year, month, day))
+
+co2_new <- co2_new %>%
+  tsibble::as_tsibble(index = time_index ) %>%
+  index_by(week_index = yearweek(time_index))
+
+co2_new
+
+
+```
+
+
 ## (1 point) Task 2b: Compare linear model forecasts against realized CO2
 
 Descriptively compare realized atmospheric CO2 levels to those predicted by your forecast from a linear time model in 1997 (i.e. "Task 2a"). (You do not need to run any formal tests for this task.) 
+
+
 
 ## (1 point) Task 3b: Compare ARIMA models forecasts against realized CO2  
 
