@@ -17,18 +17,33 @@ library(tsibble)
 library(latex2exp)
 library(lubridate)
 library(patchwork)
-
+library(magrittr)
 library(tsibble)
 library(feasts)
 library(forecast)
 
 library(sandwich)
 library(lmtest)
+library(fable)
 
+library(blsR)
+
+library(httr)
+library(jsonlite)
+
+library(plyr)
+library(dplyr)
+library(tidyr)
+library(fable)
 
 theme_set(theme_minimal())
 knitr::opts_chunk$set(dpi=1000)
 ```
+
+```{r}
+head(co2)
+```
+
 
 ```{r plot the keeling curve, echo = FALSE}
 tsibble::as_tsibble(co2) %>%
@@ -215,7 +230,6 @@ pred_df <- pred_df%>%
     "monthyrcu" = (month+year)**3,
   )
   
-
 predict(poly_model, newdata= pred_df[c("monthyr","monthyrsq","monthyrcu", 'spring','winter', 'summer', 'fall')])
 ```
 
@@ -224,9 +238,36 @@ predict(poly_model, newdata= pred_df[c("monthyr","monthyrsq","monthyrcu", 'sprin
 
 Following all appropriate steps, choose an ARIMA model to fit to the series. Discuss the characteristics of your model and how you selected between alternative ARIMA specifications. Use your model (or models) to generate forecasts to the year 2022. 
 
+```{r}
+model.fit<-co2_ts %>%
+  model(ts.model=ARIMA(co2~0+pdq(0:10,0:2,0:10)+PDQ(0,0,0),ic="bic",greedy=F,stepwise=F))
+
+model.fit$ts.model
+
+model.fit %>% coef()
+
+ari_mod_1 <- model.fit %>%
+  augment() %>%
+  gg_tsdisplay(.resid, plot_type="partial")+ labs( title = 'model1: ARIMA(2,1,4)')
+```
+
+```{r}
+model.fit2<-co2_ts %>%  
+  model(ts.model=ARIMA(co2~0+pdq(2,1,9)+PDQ(0,0,0),ic="bic",greedy=F,stepwise=F))
+
+
+model.fit2 %>%
+  augment() %>%
+  gg_tsdisplay(.resid, plot_type="partial") + labs( title = 'ARIMA(2,1,9)')
+```
+
+
+
 ## (3 points) Task 4a: Forecast atmospheric CO2 growth 
 
 Generate predictions for when atmospheric CO2 is expected to be at [420 ppm](https://research.noaa.gov/article/ArtMID/587/ArticleID/2764/Coronavirus-response-barely-slows-rising-carbon-dioxide) and 500 ppm levels for the first and final times (consider prediction intervals as well as point estimates in your answer). Generate a prediction for atmospheric CO2 levels in the year 2100. How confident are you that these will be accurate predictions?
+
+
 
 # Report from the Point of View of the Present 
 
@@ -244,29 +285,55 @@ Create a data pipeline that starts by reading from the appropriate URL, and ends
 
 Conduct the same EDA on this data. Describe how the Keeling Curve evolved from 1997 to the present, noting where the series seems to be following similar trends to the series that you "evaluated in 1997" and where the series seems to be following different trends. This EDA can use the same, or very similar tools and views as you provided in your 1997 report. 
 
+
+
 ```{r}
 co2_new <- read.csv("./co2_weekly_mlo.csv", header = TRUE, skip = 51)
-head(co2_new)
-columns = c('year', 'month', 'day', 'average', 'ndays')
 
-co2_new <- co2_new[columns]
-co2_new <- co2_new %>%
+co2_present<- co2_new %>%
+  mutate(time_index = make_datetime(year, month, day)) %>%
+  mutate(month_index = yearmonth(time_index)) %>%
+  as_tibble(key = time_index) %>%
   filter(ndays != 0) %>%
-  mutate(time_index = make_datetime(year, month, day))
+  filter(year >= 1997)
 
-co2_new <- co2_new %>%
-  tsibble::as_tsibble(index = time_index ) %>%
-  index_by(week_index = yearweek(time_index))
-
-co2_new
-
-
+head(co2_present)
 ```
+
+
+```{r}
+timeplot <- co2_present %>%
+  ggplot() + 
+  aes(x=time_index, y=average) + 
+  geom_line(color = 'steelblue') +
+  labs(
+    title = TeX(r'(Mean $CO_2$ from 1997 to Present)'),
+    subtitle = 'weekly data',
+    x = 'Date',
+    y = TeX(r'($CO_2$ parts per million)')
+  )
+
+hist <- co2_present %>% 
+  ggplot()+
+  geom_histogram(aes(x= average), binwidth = 0.5) + 
+  labs( title = 'Histogram of CO2 levels', x = 'CO2')
+
+acf <- ggAcf(co2_present$average, type = 'correlation') + labs(title = 'ACF of CO2 Levels')
+pacf <-ggAcf(co2_present$average, type = 'partial') + labs(title = 'PACF of CO2 Levels')
+
+(timeplot + hist) / (acf + pacf)
+```
+
+
+
 
 
 ## (1 point) Task 2b: Compare linear model forecasts against realized CO2
 
 Descriptively compare realized atmospheric CO2 levels to those predicted by your forecast from a linear time model in 1997 (i.e. "Task 2a"). (You do not need to run any formal tests for this task.) 
+```{r}
+
+```
 
 
 
@@ -274,11 +341,28 @@ Descriptively compare realized atmospheric CO2 levels to those predicted by your
 
 Descriptively compare realized atmospheric CO2 levels to those predicted by your forecast from the ARIMA model that you fitted in 1997 (i.e. "Task 3a"). Describe how the Keeling Curve evolved from 1997 to the present. 
 
+
+
 ## (3 points) Task 4b: Evaluate the performance of 1997 linear and ARIMA models 
 
 In 1997 you made predictions about the first time that CO2 would cross 420 ppm. How close were your models to the truth? 
 
 After reflecting on your performance on this threshold-prediction task, continue to use the weekly data to generate a month-average series from 1997 to the present, and compare the overall forecasting performance of your models from Parts 2a and 3b over the entire period. (You should conduct formal tests for this task.) 
+```{r}
+#make data month-average series from 1997 to the present:
+co2_present_bymonth <- setNames(aggregate(co2_present$average, by=list(co2_present$month_index), mean), 
+                      c("by_month", "tot_CO2"))
+
+#head(co2_present_bymonth)
+co2_present_bymonth %>%
+  as_tsibble(index=by_month) %>%
+  gg_tsdisplay(tot_CO2, plot_type="partial") + xlab( "Date") + ylab( "US Total Cases")
+```
+
+```{r}
+head(co2_present)
+```
+
 
 ## (4 points) Task 5b: Train best models on present data
 
