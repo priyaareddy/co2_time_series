@@ -359,14 +359,13 @@ co2_present_bymonth %>%
   gg_tsdisplay(tot_CO2, plot_type="partial") + xlab( "Date") + ylab( "US Total Cases")
 ```
 
-```{r}
-head(co2_present)
-```
 
 
 ## (4 points) Task 5b: Train best models on present data
 
 Seasonally adjust the weekly NOAA data, and split both seasonally-adjusted (SA) and non-seasonally-adjusted (NSA) series into training and test sets, using the last two years of observations as the test sets. For both SA and NSA series, fit ARIMA models using all appropriate steps. Measure and discuss how your models perform in-sample and (psuedo-) out-of-sample, comparing candidate models and explaining your choice. In addition, fit a polynomial time-trend model to the seasonally-adjusted series and compare its performance to that of your ARIMA model.
+
+
 
 ## (3 points) Task Part 6b: How bad could it get?
 

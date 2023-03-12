@@ -51,6 +51,8 @@ library(plyr)
 library(dplyr)
 library(tidyr)
 library(fable)
+library(gridExtra)
+
 
 theme_set(theme_minimal())
 knitr::opts_chunk$set(dpi=1000)
@@ -102,7 +104,13 @@ co2_ts <- tsibble::as_tsibble(co2)
 colnames(co2_ts)[2] = "co2"
 co2_ts['year'] = year(co2_ts$index)
 co2_ts['month'] = month(co2_ts$index)
-co2_ts
+
+co2_ts <- co2_ts %>%
+  mutate(log_co2 = log(co2))
+
+#co2_ts
+
+```
 ```
 
 ```{r EDA ,  echo = FALSE}
@@ -134,32 +142,21 @@ Observations:
 
 
 ```{r, echo = FALSE}
-co2_yr = co2_ts %>%
+co2_yr <-  co2_ts %>%
   index_by(year) %>%
   summarize(yr_co2 = mean(co2))
-#co2_yr
+
+co2_yr
 ```
 
 
 ```{r, echo = FALSE}
-p1 <- co2_yr %>% 
+p5 <- co2_yr %>% 
   ggplot(aes(x = year, y = yr_co2)) + 
   geom_line() + 
-  labs(title = 'CO2 over Time')
-p2 <- ggAcf(co2_yr$yr_co2, type = 'correlation') + labs(title = 'ACF of CO2 Levels')
-p3 <- ggAcf(co2_yr$yr_co2, type = 'partial')+ labs(title = 'PACF of CO2 Levels')
-p4 <- gg_lag(yr_co2, data = co2_yr)
-p5 <- co2_yr%>%
-  ggplot(aes(x=yr_co2, y= ..count..))+
-  geom_histogram()
+  labs(title = 'CO2 Over Time Annual Trend')
 
-   (p1 | p2) /
-   (p3 | p5)/
-    (p4)+
-   plot_annotation(
-     title    = 'Title',
-     subtitle = 'trend by year') & 
-   labs(x = NULL, y = 'CO2') 
+p5
 ```
 >Observations:
 - Time Series: From the yearly CO2 Over Time plot, there is an obvious trend of increasing levels throughout time, but we can see that there is no seasonality now. This points to the period of the seasonal trend being a year.
@@ -169,7 +166,26 @@ p5 <- co2_yr%>%
 
 ## Linear Models 
 
-To fit linear time trend model to the `co2` series we will compare this to a quadratic time trend model. Discuss whether a logarithmic transformation of the data would be appropriate. Fit a polynomial time trend model that incorporates seasonal dummy variables, and use this model to generate forecasts to the year 2020. 
+### Time series decompotision 
+```{r}
+p11 <- co2_ts %>%
+  ggplot(aes(x = index , y = co2 ), colour = "gray") +
+  geom_line(aes(y = co2), colour = "#D55E00") +
+  labs(y = "CO2 emmision ", x="Date",
+    title = "Monthly airline passengers in US")
+
+p12 <- co2_ts %>%
+  ggplot(aes(x = index  , y = log_co2 )) +
+  geom_line(aes(y= log_co2 ), colour = "#D55E00") +
+  labs(y = "Persons (Millions)", x="Time",
+    title = "Monthly airline passengers in US")
+
+p11 + p12
+#grid.arrange(p11,p12, nrow = 1, ncol =2)
+```
+
+
+To fit linear time trend model to the `co2` series we will compare a regular time trend linear model to a quadratic time trend model. We will also fit a polynomial time trend model that incorporates seasonal dummy variables, and use this model to generate forecasts to the year 2020. 
 
 To begin, we fit a model of the form: 
 
@@ -198,7 +214,7 @@ lin_model <- lm(co2~time(co2), data = co2_ts )
 quad_model <-  lm(co2 ~ time(co2) + I(time(co2)**2), data = co2_ts)
 poly_model <- lm(co2~time(co2)+I(time(co2)**2)+I(time(co2)**3)+spring+winter+summer+fall, data = co2_ts)
 
-stargazer(lin_model, quad_model, poly_model,)
+#stargazer(lin_model, quad_model, poly_model,)
 
 ```
 
@@ -206,11 +222,17 @@ stargazer(lin_model, quad_model, poly_model,)
 ```{r}
 #plot model residuals 
 mod1_resi <- ggplot(aes(x=lin_model$fitted.values, y=lin_model$residuals), data = lin_model)+
-  geom_point()
+  geom_point()+geom_smooth(se=FALSE)
+
 mod2_resi <- ggplot(aes(x=quad_model$fitted.values, y=quad_model$residuals), data = quad_model)+
-  geom_point()
+  geom_point()+geom_smooth(se=FALSE)
+
 mod3_resi <- ggplot(aes(x=poly_model$fitted.values, y=poly_model$residuals), data = poly_model)+
-  geom_point()
+  geom_point()+geom_smooth(se=FALSE)
+
+
+(mod1_resi + mod2_resi +  mod3_resi)
+
 ```
 
 
@@ -223,6 +245,7 @@ pred_df <- data.frame("month"=c(1,2,3,4,5,6,7,8,9,10,11,12)/12,
                       "winter"=c(1,1,0,0,0,0,0,0,0,0,0,1),
                       "summer"=c(0,0,0,0,0,1,1,1,0,0,0,0),
                       "fall"=c(0,0,0,0,0,0,0,0,1,1,1,0))
+
 pred_df <- pred_df%>%
   mutate(
     "monthyr" = month+year,
@@ -233,22 +256,158 @@ pred_df <- pred_df%>%
 predict(poly_model, newdata= pred_df[c("monthyr","monthyrsq","monthyrcu", 'spring','winter', 'summer', 'fall')])
 ```
 
+```{r}
+future_df <- new_data(co2_ts, n = 36)
+
+poly_model %>% 
+  forecast(new_data = future_df) %>%
+  autoplot(co2_ts)
+```
+
+
 ## ARIMA Models 
 
 Sure we also fit some ARIMA models. And talk about them. 
 
+```{r}
+model.fit<-co2_ts %>%
+  model(ts.model=ARIMA(co2~0+pdq(0:10,0:2,0:10)+PDQ(0,0,0),ic="bic",greedy=F,stepwise=F))
+
+model.fit$ts.model
+
+model.fit %>% coef()
+
+ari_mod_1 <- model.fit %>%
+  augment() %>%
+  gg_tsdisplay(.resid, plot_type="partial")+ labs( title = 'model1: ARIMA(2,1,4)')
+```
+
+```{r}
+model.fit2<-co2_ts %>%  
+  model(ts.model=ARIMA(co2~0+pdq(2,1,9)+PDQ(0,0,0),ic="bic",greedy=F,stepwise=F))
+
+
+model.fit2 %>%
+  augment() %>%
+  gg_tsdisplay(.resid, plot_type="partial") + labs( title = 'ARIMA(2,1,9)')
+```
+
 ## Forecasts 
 
 ```{r}
-prediction_1 <- predict(
-  object = model_1, 
-  newdata = data.frame(x=11), 
-  interval = 'prediction'
-)
+model.forecasts<-forecast(model.comp, h=test.size)
+model.forecasts %>%
+autoplot(colour="cornflowerblue") +
+autolayer(dat, colour="black") +
+geom_line(data=model.comp %>% augment(), aes(mnth,.fitted,color=.model)) + facet_wrap(~.model, ncol=1, nrow=3)
 ```
 
 
 Because we have fitted a model, we can make predictions from that model. Our preferred model, named in \autoref{eq:one} is quite simple, and as you might notice, does not in fact match up with the model that we have fitted. However, from this model is is possible to reason about what the outcomes would be if the *input concept* were to be slightly ouside of the observed data range. In particular, if *input concept* were as high as $11$, then we would expect the *output concept* to be `r prediction_1[1,1]`, with a prediction interval that ranges from [`r prediction_1[1,2]`, `r prediction_1[1,3]`]
+
+
+
+
+# Report from the Point of View of the Present 
+
+One of the very interesting features of Keeling and colleagues' research is that they were able to evaluate, and re-evaluate the data as new series of measurements were released. 
+
+## Introduction 
+
+In this introduction, you can assume that your reader will have **just** read your 1997 report. In this introduction, **very** briefly pose the question that you are evaluating, and describe what (if anything) has changed in the data generating process between 1997 and the present. 
+
+## (3 points) Task 1b: Create a modern data pipeline for Mona Loa CO2 data.
+
+The most current data is provided by the United States' National Oceanic and Atmospheric Administration, on a data page [[here](https://gml.noaa.gov/ccgg/trends/data.html)]. Gather the most recent weekly data from this page. (A group that is interested in even more data management might choose to work with the [hourly data](https://gml.noaa.gov/aftp/data/trace_gases/co2/in-situ/surface/mlo/co2_mlo_surface-insitu_1_ccgg_HourlyData.txt).) 
+
+Create a data pipeline that starts by reading from the appropriate URL, and ends by saving an object called `co2_present` that is a suitable time series object. 
+
+Conduct the same EDA on this data. Describe how the Keeling Curve evolved from 1997 to the present, noting where the series seems to be following similar trends to the series that you "evaluated in 1997" and where the series seems to be following different trends. This EDA can use the same, or very similar tools and views as you provided in your 1997 report. 
+
+```{r}
+co2_new <- read.csv("./co2_weekly_mlo.csv", header = TRUE, skip = 51)
+
+co2_present<- co2_new %>%
+  mutate(time_index = make_datetime(year, month, day)) %>%
+  mutate(month_index = yearmonth(time_index)) %>%
+  as_tibble(key = time_index) %>%
+  filter(ndays != 0) %>%
+  filter(year >= 1997)
+
+head(co2_present)
+```
+
+
+```{r}
+timeplot <- co2_present %>%
+  ggplot() + 
+  aes(x=time_index, y=average) + 
+  geom_line(color = 'steelblue') +
+  labs(
+    title = TeX(r'(Mean $CO_2$ from 1997 to Present)'),
+    subtitle = 'weekly data',
+    x = 'Date',
+    y = TeX(r'($CO_2$ parts per million)')
+  )
+
+hist <- co2_present %>% 
+  ggplot()+
+  geom_histogram(aes(x= average), binwidth = 0.5) + 
+  labs( title = 'Histogram of CO2 levels', x = 'CO2')
+
+acf <- ggAcf(co2_present$average, type = 'correlation') + labs(title = 'ACF of CO2 Levels')
+pacf <-ggAcf(co2_present$average, type = 'partial') + labs(title = 'PACF of CO2 Levels')
+
+(timeplot + hist) / (acf + pacf)
+```
+
+
+
+
+
+## (1 point) Task 2b: Compare linear model forecasts against realized CO2
+
+Descriptively compare realized atmospheric CO2 levels to those predicted by your forecast from a linear time model in 1997 (i.e. "Task 2a"). (You do not need to run any formal tests for this task.) 
+```{r}
+
+```
+
+
+
+## (1 point) Task 3b: Compare ARIMA models forecasts against realized CO2  
+
+Descriptively compare realized atmospheric CO2 levels to those predicted by your forecast from the ARIMA model that you fitted in 1997 (i.e. "Task 3a"). Describe how the Keeling Curve evolved from 1997 to the present. 
+
+
+
+## (3 points) Task 4b: Evaluate the performance of 1997 linear and ARIMA models 
+
+In 1997 you made predictions about the first time that CO2 would cross 420 ppm. How close were your models to the truth? 
+
+After reflecting on your performance on this threshold-prediction task, continue to use the weekly data to generate a month-average series from 1997 to the present, and compare the overall forecasting performance of your models from Parts 2a and 3b over the entire period. (You should conduct formal tests for this task.) 
+```{r}
+#make data month-average series from 1997 to the present:
+co2_present_bymonth <- setNames(aggregate(co2_present$average, by=list(co2_present$month_index), mean), 
+                      c("by_month", "tot_CO2"))
+
+#head(co2_present_bymonth)
+co2_present_bymonth %>%
+  as_tsibble(index=by_month) %>%
+  gg_tsdisplay(tot_CO2, plot_type="partial") + xlab( "Date") + ylab( "US Total Cases")
+```
+
+
+
+## (4 points) Task 5b: Train best models on present data
+
+Seasonally adjust the weekly NOAA data, and split both seasonally-adjusted (SA) and non-seasonally-adjusted (NSA) series into training and test sets, using the last two years of observations as the test sets. For both SA and NSA series, fit ARIMA models using all appropriate steps. Measure and discuss how your models perform in-sample and (psuedo-) out-of-sample, comparing candidate models and explaining your choice. In addition, fit a polynomial time-trend model to the seasonally-adjusted series and compare its performance to that of your ARIMA model.
+
+
+
+## (3 points) Task Part 6b: How bad could it get?
+
+With the non-seasonally adjusted data series, generate predictions for when atmospheric CO2 is expected to be at 420 ppm and 500 ppm levels for the first and final times (consider prediction intervals as well as point estimates in your answer). Generate a prediction for atmospheric CO2 levels in the year 2122. How confident are you that these will be accurate predictions?
+
 
 # Conclusions 
 
