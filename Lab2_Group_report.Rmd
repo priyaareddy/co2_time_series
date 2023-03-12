@@ -11,20 +11,17 @@ keywords:
   - Modern Science
 author:
   - name: Yuna Kim, Jinsoo Chung, Priya Reddy, Jocelyn Thai
- 
-  
 acknowledgements: | 
   The authors would like to thank their instructors from MIDS 271.
-  
   
 abstract: | 
   Global average temperatures have increased by more than 1℃ since pre-industrial time and the increase of carbon emission has played a key role in the global warming. Human emissions of carbon dioxide and other greenhouse gases are a primary driver of climate change.The rapid warming itself can have significant impacts on climate and natural systems across the world and human's greed for industrialization may have caused it. 
   
 header-includes: 
-
   - '\usepackage{graphicx}'
   - '\usepackage{booktabs}'
-output: rticles::aea_article
+  
+output: 'pdf_document'  
 ---
 
 ```{r load packages, echo = FALSE, message = FALSE}
@@ -37,7 +34,7 @@ library(magrittr)
 library(tsibble)
 library(feasts)
 library(forecast)
-
+library(stargazer)
 library(sandwich)
 library(lmtest)
 library(fable)
@@ -111,6 +108,23 @@ co2_ts <- co2_ts %>%
 #co2_ts
 
 ```
+
+
+
+```{r, echo = FALSE}
+co2_yr <- setNames(aggregate(co2_ts$co2, by=list(co2_ts$year), mean), 
+                      c("year", "yr_co2"))
+#head(co2_yr)
+```
+
+```{r, echo = FALSE}
+p6 <- co2_yr %>% 
+  ggplot(aes(x = year, y = yr_co2)) + 
+  geom_line() + 
+  labs(title = 'CO2 Over Time Annual Trend',
+     y = TeX(r'($CO_2$ parts per million)'))
+
+p6
 ```
 
 ```{r EDA ,  echo = FALSE}
@@ -141,28 +155,10 @@ Observations:
 - Distribution: 
 
 
-```{r, echo = FALSE}
-co2_yr <-  co2_ts %>%
-  index_by(year) %>%
-  summarize(yr_co2 = mean(co2))
 
-co2_yr
-```
-
-
-```{r, echo = FALSE}
-p5 <- co2_yr %>% 
-  ggplot(aes(x = year, y = yr_co2)) + 
-  geom_line() + 
-  labs(title = 'CO2 Over Time Annual Trend')
-
-p5
-```
 >Observations:
 - Time Series: From the yearly CO2 Over Time plot, there is an obvious trend of increasing levels throughout time, but we can see that there is no seasonality now. This points to the period of the seasonal trend being a year.
 - ACF: There's a gradual decay in the ACF values over the lags, indicating there is a still a trend in the data. 
-
-
 
 ## Linear Models 
 
@@ -172,13 +168,13 @@ p11 <- co2_ts %>%
   ggplot(aes(x = index , y = co2 ), colour = "gray") +
   geom_line(aes(y = co2), colour = "#D55E00") +
   labs(y = "CO2 emmision ", x="Date",
-    title = "Monthly airline passengers in US")
+    title = "CO2 emmission")
 
 p12 <- co2_ts %>%
   ggplot(aes(x = index  , y = log_co2 )) +
   geom_line(aes(y= log_co2 ), colour = "#D55E00") +
-  labs(y = "Persons (Millions)", x="Time",
-    title = "Monthly airline passengers in US")
+  labs(y = " Log of CO2 emmision ", x="Date",
+    title = "Log of CO2 emmission")
 
 p11 + p12
 #grid.arrange(p11,p12, nrow = 1, ncol =2)
@@ -212,9 +208,13 @@ co2_ts <- co2_ts %>%
 ```{r, echo= FALSE}
 lin_model <- lm(co2~time(co2), data = co2_ts )
 quad_model <-  lm(co2 ~ time(co2) + I(time(co2)**2), data = co2_ts)
+lin_sea_model <- lm(co2~time(co2)+spring+winter+summer+fall, data = co2_ts )
 poly_model <- lm(co2~time(co2)+I(time(co2)**2)+I(time(co2)**3)+spring+winter+summer+fall, data = co2_ts)
 
-#stargazer(lin_model, quad_model, poly_model,)
+stargazer(lin_model, quad_model,lin_sea_model, poly_model, type = 'text', single.row = TRUE, 
+          no.space = TRUE, 
+          column.sep.width = "3pt", 
+          font.size = "small")
 
 ```
 
@@ -222,16 +222,20 @@ poly_model <- lm(co2~time(co2)+I(time(co2)**2)+I(time(co2)**3)+spring+winter+sum
 ```{r}
 #plot model residuals 
 mod1_resi <- ggplot(aes(x=lin_model$fitted.values, y=lin_model$residuals), data = lin_model)+
-  geom_point()+geom_smooth(se=FALSE)
+  geom_point()+geom_smooth(se=FALSE)+labs(title = "linear model")
 
 mod2_resi <- ggplot(aes(x=quad_model$fitted.values, y=quad_model$residuals), data = quad_model)+
-  geom_point()+geom_smooth(se=FALSE)
+  geom_point()+geom_smooth(se=FALSE)+labs(title = "to time quadratic model")
 
-mod3_resi <- ggplot(aes(x=poly_model$fitted.values, y=poly_model$residuals), data = poly_model)+
-  geom_point()+geom_smooth(se=FALSE)
+mod3_resi <- ggplot(aes(x=lin_sea_model$fitted.values, y=lin_sea_model$residuals), data = lin_sea_model)+
+  geom_point()+geom_smooth(se=FALSE)+labs(title = "linear model with Seasonal")
+
+mod4_resi <- ggplot(aes(x=poly_model$fitted.values, y=poly_model$residuals), data = poly_model)+
+  geom_point()+geom_smooth(se=FALSE)+labs(title = "quadratic seasonal model")
 
 
-(mod1_resi + mod2_resi +  mod3_resi)
+(mod1_resi + mod2_resi)/
+ (mod3_resi + mod4_resi)
 
 ```
 
@@ -253,15 +257,31 @@ pred_df <- pred_df%>%
     "monthyrcu" = (month+year)**3,
   )
   
-predict(poly_model, newdata= pred_df[c("monthyr","monthyrsq","monthyrcu", 'spring','winter', 'summer', 'fall')])
+# predict(poly_model, newdata= pred_df[c("monthyr","monthyrsq","monthyrcu", 'spring','winter', 'summer', 'fall')])
 ```
 
-```{r}
-future_df <- new_data(co2_ts, n = 36)
 
-poly_model %>% 
-  forecast(new_data = future_df) %>%
-  autoplot(co2_ts)
+```{r}
+poly_model <- co2_ts %>%
+model(trend_model = TSLM(co2 ~ trend()+I(trend()^2)))
+
+poly_model %>% report()
+
+augment(poly_model) %>%
+  features(.innov, ljung_box, dof = 14, lag = 24)
+
+ glance(poly_model) %>% dplyr::select(adj_r_squared, CV, AIC, AICc, BIC)
+```
+
+
+```{r}
+#future_df <- new_data(co2_ts, n = 36)
+
+#poly_model %>% 
+#  forecast(new_data = future_df) %>%
+#  autoplot(co2_ts)
+
+#poly_model %>% forecast(new_data = future_df) %>% autoplot(df)
 ```
 
 
@@ -286,7 +306,6 @@ ari_mod_1 <- model.fit %>%
 model.fit2<-co2_ts %>%  
   model(ts.model=ARIMA(co2~0+pdq(2,1,9)+PDQ(0,0,0),ic="bic",greedy=F,stepwise=F))
 
-
 model.fit2 %>%
   augment() %>%
   gg_tsdisplay(.resid, plot_type="partial") + labs( title = 'ARIMA(2,1,9)')
@@ -294,16 +313,8 @@ model.fit2 %>%
 
 ## Forecasts 
 
-```{r}
-model.forecasts<-forecast(model.comp, h=test.size)
-model.forecasts %>%
-autoplot(colour="cornflowerblue") +
-autolayer(dat, colour="black") +
-geom_line(data=model.comp %>% augment(), aes(mnth,.fitted,color=.model)) + facet_wrap(~.model, ncol=1, nrow=3)
-```
 
 
-Because we have fitted a model, we can make predictions from that model. Our preferred model, named in \autoref{eq:one} is quite simple, and as you might notice, does not in fact match up with the model that we have fitted. However, from this model is is possible to reason about what the outcomes would be if the *input concept* were to be slightly ouside of the observed data range. In particular, if *input concept* were as high as $11$, then we would expect the *output concept* to be `r prediction_1[1,1]`, with a prediction interval that ranges from [`r prediction_1[1,2]`, `r prediction_1[1,3]`]
 
 
 
@@ -324,7 +335,7 @@ Create a data pipeline that starts by reading from the appropriate URL, and ends
 
 Conduct the same EDA on this data. Describe how the Keeling Curve evolved from 1997 to the present, noting where the series seems to be following similar trends to the series that you "evaluated in 1997" and where the series seems to be following different trends. This EDA can use the same, or very similar tools and views as you provided in your 1997 report. 
 
-```{r}
+```{r, echo = FALSE }
 co2_new <- read.csv("./co2_weekly_mlo.csv", header = TRUE, skip = 51)
 
 co2_present<- co2_new %>%
@@ -338,7 +349,7 @@ head(co2_present)
 ```
 
 
-```{r}
+```{r,  echo = FALSE }
 timeplot <- co2_present %>%
   ggplot() + 
   aes(x=time_index, y=average) + 
@@ -413,11 +424,6 @@ With the non-seasonally adjusted data series, generate predictions for when atmo
 
 What to conclude is unclear. 
 
-\bibliographystyle{aea}
-\bibliography{references}
-
-\appendix
-\section{Appendix: Model Robustness}
 
 While the most plausible model that we estimate is reported in the main, "Modeling" section, in this appendix to the article we examine alternative models. Here, our intent is to provide a skeptic that does not accept our assessment of this model as an ARIMA of order (1,2,3) an understanding of model forecasts under alternative scenarios. 
 
