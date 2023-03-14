@@ -24,7 +24,7 @@ header-includes:
 output: 'pdf_document'  
 ---
 
-```{r load packages, echo = FALSE, message = FALSE}
+```{r load packages, echo = FALSE, message = FALSE, warning=FALSE}
 library(tidyverse)
 library(tsibble)
 library(latex2exp)
@@ -162,7 +162,7 @@ Observations:
 
 ## Linear Models 
 
-### Time series decompotision 
+### Time series decomposition 
 ```{r}
 p11 <- co2_ts %>%
   ggplot(aes(x = index , y = co2 ), colour = "gray") +
@@ -205,7 +205,7 @@ co2_ts <- co2_ts %>%
 #co2_ts
 ```
 
-```{r, echo= FALSE}
+```{r, echo= FALSE, warning=FALSE}
 lin_model <- lm(co2~time(co2), data = co2_ts )
 quad_model <-  lm(co2 ~ time(co2) + I(time(co2)**2), data = co2_ts)
 lin_sea_model <- lm(co2~time(co2)+spring+winter+summer+fall, data = co2_ts )
@@ -219,19 +219,19 @@ stargazer(lin_model, quad_model,lin_sea_model, poly_model, type = 'text', single
 ```
 
 
-```{r}
+```{r, message=FALSE}
 #plot model residuals 
 mod1_resi <- ggplot(aes(x=lin_model$fitted.values, y=lin_model$residuals), data = lin_model)+
   geom_point()+geom_smooth(se=FALSE)+labs(title = "linear model")
 
 mod2_resi <- ggplot(aes(x=quad_model$fitted.values, y=quad_model$residuals), data = quad_model)+
-  geom_point()+geom_smooth(se=FALSE)+labs(title = "to time quadratic model")
+  geom_point()+geom_smooth(se=FALSE)+labs(title = "Time quadratic model")
 
 mod3_resi <- ggplot(aes(x=lin_sea_model$fitted.values, y=lin_sea_model$residuals), data = lin_sea_model)+
-  geom_point()+geom_smooth(se=FALSE)+labs(title = "linear model with Seasonal")
+  geom_point()+geom_smooth(se=FALSE)+labs(title = "linear model with Seasonal Dummy Variables")
 
 mod4_resi <- ggplot(aes(x=poly_model$fitted.values, y=poly_model$residuals), data = poly_model)+
-  geom_point()+geom_smooth(se=FALSE)+labs(title = "quadratic seasonal model")
+  geom_point()+geom_smooth(se=FALSE)+labs(title = "Polynomial (3) model with Seasonal Dummy Variables")
 
 
 (mod1_resi + mod2_resi)/
@@ -240,7 +240,7 @@ mod4_resi <- ggplot(aes(x=poly_model$fitted.values, y=poly_model$residuals), dat
 ```
 
 
-## Model Forcast
+## Model Forecast
 
 ```{r predict 2020}
 pred_df <- data.frame("month"=c(1,2,3,4,5,6,7,8,9,10,11,12)/12,
@@ -257,7 +257,8 @@ pred_df <- pred_df%>%
     "monthyrcu" = (month+year)**3,
   )
   
-# predict(poly_model, newdata= pred_df[c("monthyr","monthyrsq","monthyrcu", 'spring','winter', 'summer', 'fall')])
+#co2~time(co2)+I(time(co2)**2)+I(time(co2)**3)+spring+winter+summer+fall
+predict(poly_model, newdata= pred_df[c("monthyr","monthyrsq","monthyrcu", 'spring','winter', 'summer', 'fall')])
 ```
 
 
