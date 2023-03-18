@@ -12,10 +12,10 @@ keywords:
 author:
   - name: Yuna Kim, Jinsoo Chung, Priya Reddy, Jocelyn Thai
 acknowledgements: | 
-  The authors would like to thank their instructors from MIDS 271.
+  The authors would like to thank their instructors from MIDS 271 as well as acknowledge the foundational research and data collection work done by harles Keeling.
   
 abstract: | 
-  Global average temperatures have increased by more than 1℃ since pre-industrial time and the increase of carbon emission has played a key role in the global warming. Human emissions of carbon dioxide and other greenhouse gases are a primary driver of climate change.The rapid warming itself can have significant impacts on climate and natural systems across the world and human's greed for industrialization may have caused it. 
+  Global average temperatures have increased by more than 1℃ from pre-industrial times to now, and it's common scientific belief that the increase of carbon emissions worldwide has played a critical role in this global warming. Scientists believe that one of the primary drivers of climate change is that continued, and increasing, human emissions of carbon dioxide and other greenhouse gases into the atmosphere. This rapid global warming can have and already has had significant impacts on global and local climates as well as natural and industrial systems across the world. Studying CO2 presense in the atmosphere is important in this context then in order to better understand not only one of the drivers of climate change, and in order to ascertain what steps we might be able to take to predict and manage the effects that will arise as a result of it.
   
 header-includes: 
   - '\usepackage{graphicx}'
@@ -25,6 +25,7 @@ output: 'pdf_document'
 ---
 
 ```{r load packages, echo = FALSE, message = FALSE, warning=FALSE}
+#load all packages needed
 library(tidyverse)
 library(tsibble)
 library(latex2exp)
@@ -63,16 +64,19 @@ options(digits = 3)
 ```
 
 
-Understanding a changing climate, and what it means for the earth's inhabitants is of growing interest to the scientific and policy community. Although, at this point in 1997 it is not entirely clear what the consequences of this growing awareness will be, in this report we present likely outcomes under "business-as-usual" scenarios. In doing so, our hope, is to establish a series of possible futures, and, as evidence, technology, and policy develop over the coming decades, that we can weigh the impacts that carbon-emission reduction efforts might take. 
+Understanding a changing climate, and what it means for the earth's inhabitants is of growing interest to the scientific and policy community. Although, at this point in 1997 it is not entirely clear what the consequences of this growing awareness will be, in this report we present likely outcomes under "business-as-usual" scenarios. In doing so, our hope, is to establish a series of possible futures, and, as evidence, technology, and policy develop over the coming decades, our goal is that we can theb weigh the impacts that carbon-emission reduction efforts might take. 
 
 # Background 
 ## Carbon Emissions 
-We want to understand if atmospheric CO2 levels increased since 1997 and if we anticipate that this trend will continue. High CO2 levels have been shown to negatively play into climate change. The increase in atmospheric CO2 has cascading effects from global warming to ocean acidification. Due to this, we may notice food supply chain disruptions, natural disasters of increasing intensity, and habitat disruption of all ecosystems and the animal species living there. In an economical sense, understanding these patterns is important so we can prepare for any shifts and uncertainities in supply chains that might arise for these new climate patterns. In total understanding the patterns in atmospheric CO2 concentrations is important both so that we can mitigate the existing effects of this increase and prevent continuing upwards trends in CO2.
-In addition if our findings are significant, this could persuade other governmental organizations to increase their CO2 monitoring efforts.
+In this report we seek to understand if atmospheric CO2 levels have increased since 1997 and if we anticipate that this trend will continue. To do this we seek to answer 2 main questions:
+> What is the best model we can use to model CO2 levels over time?
+> Using this model, what do we forecast atmospheric CO2 levels will be? And how confident are we in these predictions?
+
+High CO2 levels have been shown to negatively play into climate change, and the increase in atmospheric CO2 has cascading effects from global warming to ocean acidification. Due to these effects, we may notice food supply chain disruptions, natural disasters of increasing intensity, and habitat disruption of all ecosystems and the animal species living there. In an economical sense, understanding these patterns is important so we can prepare for any shifts and uncertainties in global supply chains that might arise for these new climate patterns. In total understanding the patterns in atmospheric CO2 concentrations is important both so that we can mitigate the existing effects of this increase and prevent continuing upwards trends in CO2. In addition if our report findings are significant, the findings could persuade other governmental organizations to increase their CO2 monitoring efforts and global preparedness efforts.
 
 ## Historical Trends in Atmospheric Carbon 
 
-In 1958 Keeling began continuous monitoring of atmospheric carbon dioxide concentrations from the Mauna Loa Observatory in Hawaii and soon observed a trend increase carbon dioxide levels in addition to the seasonal cycle. He was able to attribute this trend increase to growth in global rates of fossil fuel combustion. This trend has continued to the present, and is known as the "Keeling Curve."
+In 1958 Charles Keeling began continuous monitoring of atmospheric carbon dioxide concentrations from the Mauna Loa Observatory in Hawaii and soon observed a trend increase carbon dioxide levels in addition to the seasonal cycle. He was able to attribute this trend increase to growth in global rates of fossil fuel combustion. This trend has continued to the present, and is known as the "Keeling Curve,", this curve is plotted below. And we can see in this curve both an overall rising trend in CO2 levels as well as some sort of cyclic or seasonal pattern of atmospheric CO2 fluctuations each year.
 
 ```{r plot the keeling curve, echo = FALSE}
 tsibble::as_tsibble(co2) %>%
@@ -80,29 +84,32 @@ tsibble::as_tsibble(co2) %>%
   aes(x=index, y=value) + 
   geom_line(color = 'steelblue') +
   labs(
-    title = TeX(r'(Monthly Mean $CO_2$)'),
-    subtitle = 'The "Keeling Curve"',
-    x = 'Month and Year',
-    y = TeX(r'($CO_2$ parts per million)')
+    title = TeX(r'(Monthly Mean $CO_2$ 1959-1997)'),
+    subtitle = 'The "Keeling Curve" constructed from CO2 observations from the Mauna Loa Observatory',
+    x = 'Date (Month and Year)',
+    y = TeX(r'($CO_2$ (parts per million))')
   )
 ```
 
 
 
 # Models and Forecasts 
-In this section, we present evaluate two classes models the linear model and the ARIMA model to assess which time series model is most appropriate to use. 
+In this section, we evaluate two classes of models for answering our questions -- a linear time model and and an ARIMA model to assess which time series model is most appropriate to use to model CO2 levels over time. 
 
 ## Data EDA 
- This data measures the mean atmospheric CO2 concentration in Mauna Loa Observatory in Hawaii. The data ranges from 313 parts per million by volume (ppmv) in March 1958 to 406ppmv in November 2018. The data was normalized to remove any influence from local contamination. Carbon dioxide measurements at the Mauna Loa Observatory in Hawaii are made with a type of infrared spectrophotometer, now known as a nondispersive infrared sensor, that is calibrated using World Meteorological Organization standards.
+As a background on the data we are using it is important to note that this data measures the mean atmospheric CO2 concentration and was collected at the Mauna Loa Observatory in Hawaii. The CO2 levels in the data range from 313 parts per million by volume (ppmv) in March 1958 to 406 ppmv in November 2018. The data was also normalized to remove any influence from local contamination. Carbon dioxide measurements at the Mauna Loa Observatory in Hawaii are made with a type of infrared spectrophotometer, now known as a nondispersive infrared sensor, that is calibrated using World Meteorological Organization standards.
 
 
-```{r,  echo = FALSE}
-co2_ts <- tsibble::as_tsibble(co2) 
-colnames(co2_ts)[2] = "co2"
-co2_ts['year'] = year(co2_ts$index)
-co2_ts['month'] = month(co2_ts$index)
+```{r,  create co2 ts, echo = FALSE}
+co2_ts <- tsibble::as_tsibble(co2, index = index) 
+colnames(co2_ts)[2] = "co2_val"
 
-co2_ts <- co2_ts %>%
+#add year and month term
+#co2_ts['year'] = year(co2_ts$index)
+#co2_ts['month'] = month(co2_ts$index)
+
+#create log tsibble
+log_ts <- co2_ts %>%
   mutate(log_co2 = log(co2))
 
 #co2_ts
@@ -110,14 +117,16 @@ co2_ts <- co2_ts %>%
 ```
 
 
-
-```{r, echo = FALSE}
-co2_yr <- setNames(aggregate(co2_ts$co2, by=list(co2_ts$year), mean), 
+```{r, yearly co2 ts, echo = FALSE}
+#create a yearly co2 tsibble
+#where co2 levels are averaged over a whole year
+co2_yr <- setNames(aggregate(co2_ts$co2_val, by=list(year(co2_ts$index)), mean), 
                       c("year", "yr_co2"))
 #head(co2_yr)
 ```
 
-```{r, echo = FALSE}
+```{r, co2 ts yearly trend plot, echo = FALSE}
+#plot the yearly trend in co2
 p6 <- co2_yr %>% 
   ggplot(aes(x = year, y = yr_co2)) + 
   geom_line() + 
@@ -128,15 +137,16 @@ p6
 ```
 
 ```{r EDA ,  echo = FALSE}
+#inital EDA, look at initial plots as well as ACF, pacf, and distribution 
 p1 <- co2_ts %>% 
-  ggplot(aes(x = time(co2), y = co2)) + 
+  ggplot(aes(x = index, y = co2_val)) + 
   geom_line() + 
   labs(title = 'CO2 over Time')
-p2 <- ggAcf(co2_ts$co2, type = 'correlation') + labs(title = 'ACF of CO2 Levels')
-p3 <- ggAcf(co2_ts$co2, type = 'partial')+ labs(title = 'PACF of CO2 Levels')
-p4 <- gg_lag(co2, data = co2_ts)
+p2 <- ggAcf(co2_ts$co2_val, type = 'correlation') + labs(title = 'ACF of CO2 Levels')
+p3 <- ggAcf(co2_ts$co2_val, type = 'partial')+ labs(title = 'PACF of CO2 Levels')
+p4 <- gg_lag(co2_val, data = co2_ts)
 p5 <- co2_ts%>%
-  ggplot(aes(x=co2, y= ..count..))+
+  ggplot(aes(x=co2_val, y= ..count..))+
   geom_histogram()
 
    (p1 | p2) /
@@ -154,124 +164,158 @@ Observations:
 - PACF: PACF cuts off to zero after lag 2 and stays that way. However, at lags 12 and 13, the values become significant again. This suggests that although the model exhibits AR model-like behavior, there's some deviances in the data.
 - Distribution: 
 
-
-
 >Observations:
 - Time Series: From the yearly CO2 Over Time plot, there is an obvious trend of increasing levels throughout time, but we can see that there is no seasonality now. This points to the period of the seasonal trend being a year.
-- ACF: There's a gradual decay in the ACF values over the lags, indicating there is a still a trend in the data. 
+- ACF: There's a gradual decay in the ACF values over the lags, indicating there is a still a trend in the data.
+
+### Need to fix the EDA plots to better look at the trend, decompose seasonality, and to look at the trend og growth (acceleration)
 
 ## Linear Models 
 
 ### Time series decomposition 
 ```{r}
 p11 <- co2_ts %>%
-  ggplot(aes(x = index , y = co2 ), colour = "gray") +
-  geom_line(aes(y = co2), colour = "#D55E00") +
+  ggplot(aes(x = index , y = co2_val ), colour = "gray") +
+  geom_line(aes(y = co2_val), colour = "#D55E00") +
   labs(y = "CO2 emmision ", x="Date",
     title = "CO2 emmission")
 
-p12 <- co2_ts %>%
+p12 <- log_ts %>%
   ggplot(aes(x = index  , y = log_co2 )) +
   geom_line(aes(y= log_co2 ), colour = "#D55E00") +
   labs(y = " Log of CO2 emmision ", x="Date",
     title = "Log of CO2 emmission")
 
-p11 + p12
+p11
+p12
 #grid.arrange(p11,p12, nrow = 1, ncol =2)
 ```
 
 
-To fit linear time trend model to the `co2` series we will compare a regular time trend linear model to a quadratic time trend model. We will also fit a polynomial time trend model that incorporates seasonal dummy variables, and use this model to generate forecasts to the year 2020. 
+To fit linear time trend model to the `co2` series we will compare a regular time trend linear model to a quadratic time trend model. We will also fit a polynomial time trend model that incorporates seasonal dummy variables, and use this model to generate forecasts to the year 2020. Note that we will be evaluating using both the unscaled CO2 and the log(CO2) value for constructing our models.  
 
-To begin, we fit a model of the form: 
+To begin our analysis, we fit a linear model of the form to our data: 
 
 \begin{equation}
 \label{eq:one}
 \text{CO}_{2} = \phi_{0} + \phi_{1} + \epsilon_{eit}
 \end{equation} 
 
-```{r, echo= FALSE}
-#data transform my season
-co2_ts <- co2_ts %>%
-  mutate(winter = case_when(co2_ts$month %in% c(12,1,2) ~ 1,
-                           !co2_ts$month %in% c(12,1,2) ~ 0),
-         spring = case_when(co2_ts$month %in% c(3,4,5) ~ 1,
-                           !co2_ts$month %in% c(3,4,5) ~ 0),
-         summer = case_when(co2_ts$month %in% c(6,7,8) ~ 1,
-                           !co2_ts$month %in% c(6,7,8) ~ 0),
-         fall = case_when(co2_ts$month %in% c(9,10,11) ~ 1,
-                           !co2_ts$month %in% c(9,10,11) ~ 0)
-  )
-#co2_ts
-```
-
 ```{r, echo= FALSE, warning=FALSE}
-lin_model <- lm(co2~time(co2), data = co2_ts )
-quad_model <-  lm(co2 ~ time(co2) + I(time(co2)**2), data = co2_ts)
-lin_sea_model <- lm(co2~time(co2)+spring+winter+summer+fall, data = co2_ts )
-poly_model <- lm(co2~time(co2)+I(time(co2)**2)+I(time(co2)**3)+spring+winter+summer+fall, data = co2_ts)
+#Linear models (original scale)
+lin_model <- co2_ts%>% model(trend_model = TSLM(co2_val ~ trend()))
+quad_model <- co2_ts%>%  model(trend_model = TSLM(co2_val ~ trend() + I(trend()^2 )))
 
-stargazer(lin_model, quad_model,lin_sea_model, poly_model, type = 'text', single.row = TRUE, 
+#linear models (Logged CO2 values)
+log_lin_model <- log_ts%>%model(trend_model = TSLM(log_co2 ~ trend() ))
+log_quad_model <- log_ts%>% model(trend_model = TSLM(log_co2 ~ trend() + I(trend()^2 )))
+
+#Polynomial model with seasonal dummy (original scale) 
+quadratic_season <- co2_ts %>%
+  model(trend_model = TSLM(co2_val ~ trend()+I(trend()^2)+ season())) 
+
+#Polynomial model with seasonal dummy (Logged CO2 values)
+log_quadratic_season <- log_ts %>%
+  model(trend_model = TSLM(log_co2 ~ trend()+I(trend()^2)+ season())) 
+
+stargazer(lin_model, quad_model,sea_poly_model, sea_poly_model_log, type = 'text', single.row = TRUE, 
           no.space = TRUE, 
           column.sep.width = "3pt", 
           font.size = "small")
 
 ```
 
+```{r plot models against data, echo=FALSE}
+p37 <- augment(lin_model)%>%
+  ggplot(aes(x = index)) +
+  geom_line(aes(y = co2_val, colour = "Data")) +
+  geom_line(aes(y = .fitted, colour = "Fitted")) +
+  labs(y = "Time",
+       title = "linear model") 
+
+p38<-augment(quad_model)%>%
+  ggplot(aes(x = index)) +
+  geom_line(aes(y = co2_val, colour = "Data")) +
+  geom_line(aes(y = .fitted, colour = "Fitted")) +
+  labs(y = "Time",
+       title = "quadratic model")
+
+p39<-augment(log_lin_model)%>%
+  ggplot(aes(x = index)) +
+  geom_line(aes(y = log_co2, colour = "Data")) +
+  geom_line(aes(y = .fitted, colour = "Fitted")) +
+  labs(y = "Time",
+       title = "linear log model") 
+
+p40<-augment(log_quad_model)%>%
+  ggplot(aes(x = index)) +
+  geom_line(aes(y = log_co2, colour = "Data")) +
+  geom_line(aes(y = .fitted, colour = "Fitted")) +
+  labs(y = "Time",
+       title = "log quadratic model") 
+
+p41<-augment(quadratic_season)%>%
+  ggplot(aes(x = index)) +
+  geom_line(aes(y = co2_val, colour = "Data")) +
+  geom_line(aes(y = .fitted, colour = "Fitted")) +
+  labs(y = "Time",
+       title = "seasonal quadratic model") 
+
+p42<-augment(log_quadratic_season)%>%
+  ggplot(aes(x = index)) +
+  geom_line(aes(y = log_co2, colour = "Data")) +
+  geom_line(aes(y = .fitted, colour = "Fitted")) +
+  labs(y = "Time",
+       title = "log seasonal quadratic model") 
+
+grid.arrange(p37,p38,p39,p40,p41,p42, nrow = 3, ncol = 2)
+```
+>we can see that the log models appear to fit the data slightly better (some overshoot in the linear model around 1980s, whereas less in log linear model). Same with the quadratic models, appears like it's slightly overestimating in the quadratic model and is overestimating less (ie. in the middle of the seasonal variation) in the log quad model. zcan see this in the seasonal model too. Moving forward with working on the log(co2) data.
+
 
 ```{r, message=FALSE}
 #plot model residuals 
-mod1_resi <- ggplot(aes(x=lin_model$fitted.values, y=lin_model$residuals), data = lin_model)+
-  geom_point()+geom_smooth(se=FALSE)+labs(title = "linear model")
+#might need to delete
 
-mod2_resi <- ggplot(aes(x=quad_model$fitted.values, y=quad_model$residuals), data = quad_model)+
-  geom_point()+geom_smooth(se=FALSE)+labs(title = "Time quadratic model")
+lin_resid <- log_lin_model %>% gg_tsresiduals()
+lin_resid
+quad_resid<- log_quad_model %>% gg_tsresiduals()
+quad_resid
+sea_resid<-log_quadratic_season %>% gg_tsresiduals()
+sea_resid
 
-mod3_resi <- ggplot(aes(x=lin_sea_model$fitted.values, y=lin_sea_model$residuals), data = lin_sea_model)+
-  geom_point()+geom_smooth(se=FALSE)+labs(title = "linear model with Seasonal Dummy Variables")
+#mod1_resi <- ggplot(aes(x=lin_model$fitted.values, y=lin_model$residuals), data = lin_model)+ geom_point()+geom_smooth(se=FALSE)+labs(title = "linear model")
 
-mod4_resi <- ggplot(aes(x=poly_model$fitted.values, y=poly_model$residuals), data = poly_model)+
-  geom_point()+geom_smooth(se=FALSE)+labs(title = "Polynomial (3) model with Seasonal Dummy Variables")
+#mod2_resi <- ggplot(aes(x=quad_model$fitted.values, y=quad_model$residuals), data = quad_model)+geom_point()+geom_smooth(se=FALSE)+labs(title = "Time quadratic model")
+
+#mod3_resi <- ggplot(aes(x=lin_sea_model$fitted.values, y=lin_sea_model$residuals), data = lin_sea_model)+geom_point()+geom_smooth(se=FALSE)+labs(title = "linear model with Seasonal Dummy Variables")
+
+#mod4_resi <- ggplot(aes(x=poly_model$fitted.values, y=poly_model$residuals), data = poly_model)+geom_point()+geom_smooth(se=FALSE)+labs(title = "Polynomial (3) model with Seasonal Dummy Variables")
 
 
-(mod1_resi + mod2_resi)/
- (mod3_resi + mod4_resi)
+#(mod1_resi + mod2_resi)/
+# (mod3_resi + mod4_resi)
 
 ```
 
 
 ## Model Forecast
 
-```{r predict 2020}
-pred_df <- data.frame("month"=c(1,2,3,4,5,6,7,8,9,10,11,12)/12,
-                      "year"=rep(c(2020), each=12),
-                      "spring"=c(0,0,1,1,1,0,0,0,0,0,0,0),
-                      "winter"=c(1,1,0,0,0,0,0,0,0,0,0,1),
-                      "summer"=c(0,0,0,0,0,1,1,1,0,0,0,0),
-                      "fall"=c(0,0,0,0,0,0,0,0,1,1,1,0))
-
-pred_df <- pred_df%>%
-  mutate(
-    "monthyr" = month+year,
-    "monthyrsq" = (month+year)**2,
-    "monthyrcu" = (month+year)**3,
-  )
-  
-#co2~time(co2)+I(time(co2)**2)+I(time(co2)**3)+spring+winter+summer+fall
-predict(poly_model, newdata= pred_df[c("monthyr","monthyrsq","monthyrcu", 'spring','winter', 'summer', 'fall')])
+```{r}
+log_quadratic_season[1]
 ```
 
+```{r predict 2020}
 
-```{r}
-poly_model <- co2_ts %>%
-model(trend_model = TSLM(co2 ~ trend()+I(trend()^2)))
+#create new tsibble for 1998-2020
+#pred_df <- new_data(co2_ts, n = 276) 
 
-poly_model %>% report()
+#general predictions for pred_df
+library(forecast)
+log_quadratic_season[[1]] %>%
+  forecast::forecast(h=276)
 
-augment(poly_model) %>%
-  features(.innov, ljung_box, dof = 14, lag = 24)
 
- glance(poly_model) %>% dplyr::select(adj_r_squared, CV, AIC, AICc, BIC)
 ```
 
 
