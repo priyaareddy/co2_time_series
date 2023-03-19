@@ -219,11 +219,23 @@ quadratic_season <- co2_ts %>%
 log_quadratic_season <- log_ts %>%
   model(trend_model = TSLM(log_co2 ~ trend()+I(trend()^2)+ season())) 
 
-stargazer(lin_model, quad_model,sea_poly_model, sea_poly_model_log, type = 'text', single.row = TRUE, 
-          no.space = TRUE, 
-          column.sep.width = "3pt", 
-          font.size = "small")
+#stargazer(lin_model, quad_model,sea_poly_model, sea_poly_model_log, type = 'text', single.row = TRUE, 
+ #         no.space = TRUE, 
+  #        column.sep.width = "3pt", 
+   #       font.size = "small")
 
+```
+```{r}
+# Convert TSLM objects to tidy data frames
+tidy1 <- tidy(lin_model)
+tidy2 <- tidy(quad_model)
+tidy3 <- tidy(quadratic_season)
+
+# Combine tidy data frames into a single data frame
+tidy_all <- rbind(tidy1, tidy2, tidy3)
+
+# Create stargazer table
+stargazer(tidy_all, type = "text", title = "My TSLM Models")
 ```
 
 ```{r plot models against data, echo=FALSE}
@@ -315,34 +327,68 @@ predictions
 
 ## ARIMA Models 
 
-We will also generate a few ARIMA models and compare them to our linear model. To select our ARIMA model we use the BIC, the BIC selects against models with too many parameters. 
+We will also generate a few ARIMA models and compare them to our linear model. To select our ARIMA model we use the AIC, the AIC selects against models with too many parameters. We know that there is a seasonal component to our data, so we will also select for seasonal AR and MA values and check if seasonal differencing will make the data stationary. I am choosing to use the ARIMA() function to select our data. This method will determine the optimal p,d,q,P,D,Q values as well as the optimal levels of differencing for us to have stationary data and will then select a model based on the metric we have chosen as our criteria (AIC). We can see interpret the resulting ARIMA model in terms of the number of (seasonal) AR terms, the level of differencing to acheive stationary data, and the (seasonalWe are including seasonality in our model because we can see in the decomposition as well as the time series plots that there is a strong possibility of a seasonal component in the CO2 levels. If adding a seasonal component improves the AIC score then such a model will be chosen.
 
 ```{r}
+#takes a while, try to avoid re-running
+#returns ARIMA(1,0,1)(4,1,0)[12] w/ drift
 model.fit<-co2_ts %>%
-  model(fable::ARIMA(co2_val ~ 1 + pdq(0:10,0:2,0:10) + PDQ(0:10,0:2,0:10)))
-model.fit$ts.model
+  model(fable::ARIMA(co2_val ~ 1 + pdq(0:10,0:2,0:10) + PDQ(0:10,0:2,0:10), ic="aic", stepwise=F, greedy=F))
 
-model.fit %>% coef()
+model.fit %>%
+  report()
 
-ari_mod_1 <- model.fit %>%
-  augment() %>%
-  gg_tsdisplay(.resid, plot_type="partial")+ labs( title = 'model1: ARIMA(2,1,4)')
+#model.fit %>%
+#  augment() %>%
+#  ACF(.resid) %>%
+#  autoplot()+
+#  labs(title = "ACF plot of ARIMA(1,0,1)(4,1,0)[12] model residuals")
 ```
 
-```{r}
-model.fit2<-co2_ts %>%  
-  model(ts.model=ARIMA(co2~0+pdq(2,1,9)+PDQ(0,0,0),ic="bic",greedy=F,stepwise=F))
 
-model.fit2 %>%
-  augment() %>%
-  gg_tsdisplay(.resid, plot_type="partial") + labs( title = 'ARIMA(2,1,9)')
+With the AIC as our selection criteria we have estimated the model to be an ARIMA(1,0,1)(4,1,0)[12] with drift. This model has an AIC of 218, since this was the model that was chosen, this must be the smallest AIC value in the models that we have compared. This ARIMA(1,0,1)(4,1,0)[12] model can be interpreted by saying that there is 1 AR term, 1 MA term, 4 seasonal AR terms and the data had to be seasonally differenced once to be made stationary. the [12] at the end of the model also indicates
+
+
+To be thorough we will also repeat the above process but instead using BIC and AICC as our selection metrics. In general the BIC is stricter than the AIC in penalizing additional parameters in our model, so it is possible that this selection process will result in a different model. When we repeated the above process using the bic or the aicc as our criteria, we found that we were sitll selecting the exact same ARIMA model, so we will move forwards with this model. 
+
+```{r BIC ARIMA, echo=FALSE, eval=FALSE}
+#DON'T re-run --> takes a long time and just gives same result as AIC
+model.fit<-co2_ts %>%
+  model(fable::ARIMA(co2_val ~ 1 + pdq(0:10,0:2,0:10) + PDQ(0:10,0:2,0:10), ic="bic", stepwise=F, greedy=F))
+
+model.fit %>%
+  report()
+
+#model.fit2 %>%
+ # augment() %>%
+  #gg_tsdisplay(.resid, plot_type="partial") + labs( title = 'ARIMA(2,1,9)')
 ```
 
-## Forecasts 
+```{r AICC arima, echo=FALSE, eval=FALSE}
+#DON'T re-run --> takes a long time and just gives same result as AIC
+model.fit<-co2_ts %>%
+  model(fable::ARIMA(co2_val ~ 1 + pdq(0:10,0:2,0:10) + PDQ(0:10,0:2,0:10), ic="aicc", stepwise=F, greedy=F))
+
+model.fit %>%
+  report()
+
+#model.fit2 %>%
+ # augment() %>%
+  #gg_tsdisplay(.resid, plot_type="partial") + labs( title = 'ARIMA(2,1,9)')
+```
+
+
+## Forecasting Atmospheric CO2 Growth 
+
+Now that we have a few different models that do a decent job at modeling our CO2 data, we want to use these models to generate predictions for us. 
+
+### When will we reach 420 and 500 ppm CO2?
+First we want to see when these models forecast that the atmospheric CO2 levels will reach 420ppm and 500ppm. Since we know there is a overall upwards trend as well as a seasonal component to the CO2 levels, when we generate these predictions we will actualy want to look at both the first and the last times that the model predicts the atmospheric CO2 levels to be at these values. 
 
 
 
-
+### What do we predict CO2 levels will be in 2100 (80 years from now)?
+We also want to look at the predictions for our models for the more distant future. Here we will look at what the model predicts will be the CO2 levels in the year 2100. We will also include the confidence intervals for these predictions.
 
 
 
