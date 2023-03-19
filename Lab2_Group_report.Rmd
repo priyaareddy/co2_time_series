@@ -40,6 +40,7 @@ library(sandwich)
 library(lmtest)
 library(fable)
 library(MASS)
+library(seasonal)
 
 library(blsR)
 
@@ -352,7 +353,7 @@ model.fit %>%
 With the AIC as our selection criteria we have estimated the model to be an ARIMA(1,0,1)(4,1,0)[12] with drift. This model has an AIC of 218, since this was the model that was chosen, this must be the smallest AIC value in the models that we have compared. This ARIMA(1,0,1)(4,1,0)[12] model can be interpreted by saying that there is 1 AR term, 1 MA term, 4 seasonal AR terms and the data had to be seasonally differenced once to be made stationary. the [12] at the end of the model also indicates
 
 
-To be thorough we will also repeat the above process but instead using BIC and AICC as our selection metrics. In general the BIC is stricter than the AIC in penalizing additional parameters in our model, so it is possible that this selection process will result in a different model. When we repeated the above process using the bic or the aicc as our criteria, we found that we were sitll selecting the exact same ARIMA model, so we will move forwards with this model. 
+To be thorough we will also repeat the above process but instead using BIC and AICC as our selection metrics. In general the BIC is stricter than the AIC in penalizing additional parameters in our model, so it is possible that this selection process will result in a different model. When we repeated the above process using the bic or the aicc as our criteria, we found that we were still selecting the exact same ARIMA model, so we will move forwards with this model. 
 
 ```{r BIC ARIMA, echo=FALSE, eval=FALSE}
 #DON'T re-run --> takes a long time and just gives same result as AIC
@@ -428,9 +429,9 @@ We also want to look at the predictions for our models for the more distant futu
 ```{r}
 #forecast up until the end of 2100 and also calculate confidence interval
 predictions3 <- quadratic_season %>%
-  fabletools::forecast(h=1236)%>%
-  hilo(level=95)%>%
-  unpack_hilo("95%")
+  fabletools::forecast(h=1236)#%>%
+  #hilo(level=95)%>%
+  #unpack_hilo("95%")
 
 #select only the predictions for 2100
 predictions3 <- predictions3[1225:1236,]
@@ -492,23 +493,44 @@ pacf <-ggAcf(co2_present$average, type = 'partial') + labs(title = 'PACF of CO2 
 (timeplot + hist) / (acf + pacf)
 ```
 
-
-
-
-
 ## (1 point) Task 2b: Compare linear model forecasts against realized CO2
 
 Descriptively compare realized atmospheric CO2 levels to those predicted by your forecast from a linear time model in 1997 (i.e. "Task 2a"). (You do not need to run any formal tests for this task.) 
 ```{r}
+prediction_lin <- lin_model %>%
+  fabletools::forecast(h=276)
 
+p_linear <- ggplot() +
+  geom_line(aes(x = prediction_lin$index, y = prediction_lin$.mean, colour = "Linear_Model")) +
+  geom_line(aes(x = co2_present$time_index, y = co2_present$average, colour = 'Actual')) + 
+  labs(x = "Time", y = 'CO2 levels',
+       title = "linear model") 
+
+
+p_linear
 ```
 
-
+The linear model deviates from the actual Co2 levels.
 
 ## (1 point) Task 3b: Compare ARIMA models forecasts against realized CO2  
 
 Descriptively compare realized atmospheric CO2 levels to those predicted by your forecast from the ARIMA model that you fitted in 1997 (i.e. "Task 3a"). Describe how the Keeling Curve evolved from 1997 to the present. 
 
+```{r}
+prediction_arima <- model.fit %>%
+  fabletools::forecast(h=276)
+
+p_arima <- ggplot() +
+  geom_line(aes(x = prediction_arima$index, y = prediction_arima$.mean, colour = "Arima_Model")) +
+  geom_line(aes(x = co2_present$time_index, y = co2_present$average, colour = 'Actual')) + 
+  labs(x = "Time", y = 'CO2 levels',
+       title = "linear model") 
+
+
+p_arima
+```
+
+The ARIMA model also deviates from the actual values.
 
 
 ## (3 points) Task 4b: Evaluate the performance of 1997 linear and ARIMA models 
@@ -534,11 +556,101 @@ co2_present_bymonth %>%
 Seasonally adjust the weekly NOAA data, and split both seasonally-adjusted (SA) and non-seasonally-adjusted (NSA) series into training and test sets, using the last two years of observations as the test sets. For both SA and NSA series, fit ARIMA models using all appropriate steps. Measure and discuss how your models perform in-sample and (psuedo-) out-of-sample, comparing candidate models and explaining your choice. In addition, fit a polynomial time-trend model to the seasonally-adjusted series and compare its performance to that of your ARIMA model.
 
 
+```{r}
+# Seasonally adjust the data
+co2_present_sa <- setNames(aggregate(co2_present$average, by=list(year(co2_present$time_index)), mean), 
+                      c("year", "yr_co2"))
+co2_present_nsa <- setNames(aggregate(co2_present$average, by=list(co2_present$month_index), mean), 
+                      c("by_month", "tot_CO2"))
+
+
+#Split into training and test
+co2_train_sa <- co2_present_sa %>% filter(year <= max(year)-2) %>% as_tsibble(index = year)
+co2_test_sa <- co2_present_sa %>% filter(year > max(year)-2)  %>% as_tsibble(index = year)
+
+
+co2_train_nsa <- co2_present_nsa %>% 
+  as_tsibble(index=by_month) %>% filter(year(by_month) <= max(year(by_month))-2) 
+co2_test_nsa <- co2_present_nsa %>% 
+  as_tsibble(index=by_month) %>% filter(year(by_month) > max(year(by_month))-2) 
+
+#Fit the seasonally adjusted model
+sa.model.fit <-co2_train_sa %>%
+  model(fable::ARIMA(yr_co2 ~ 1 + pdq(0:10,0:2,0:10) + PDQ(0:10,0:2,0:10), ic="aic", stepwise=F, greedy=F))
+
+sa.model.graph <- augment(sa.model.fit)%>%
+  ggplot(aes(x = year)) +
+  geom_line(aes(y = yr_co2, colour = "Data")) +
+  geom_line(aes(y = .fitted, colour = "Fitted")) +
+  labs(y = "Time",
+       title = "Seasonally Adjusted Model") 
+
+
+#Fit the non-seasonally adjusted model
+nsa.model.fit <-co2_train_nsa %>%
+  model(fable::ARIMA(tot_CO2 ~ 1 + pdq(0:10,0:2,0:10) + PDQ(0:10,0:2,0:10), ic="aic", stepwise=F, greedy=F))
+
+nsa.model.graph <- augment(nsa.model.fit)%>%
+  ggplot(aes(x = by_month)) +
+  geom_line(aes(y = tot_CO2, colour = "Data")) +
+  geom_line(aes(y = .fitted, colour = "Fitted")) +
+  labs(y = "Time",
+       title = "Non-Seasonally Adjusted Model") 
+
+
+sa.model.graph |  nsa.model.graph
+
+#model.fit %>%
+#  report()
+
+#model.fit %>%
+#  augment() %>%
+#  ACF(.resid) %>%
+#  autoplot()+
+#  labs(title = "ACF plot of ARIMA(1,0,1)(4,1,0)[12] model residuals")
+```
+
 
 ## (3 points) Task Part 6b: How bad could it get?
 
 With the non-seasonally adjusted data series, generate predictions for when atmospheric CO2 is expected to be at 420 ppm and 500 ppm levels for the first and final times (consider prediction intervals as well as point estimates in your answer). Generate a prediction for atmospheric CO2 levels in the year 2122. How confident are you that these will be accurate predictions?
 
+```{r}
+co2_present_prediction <- nsa.model.fit %>%
+  fabletools::forecast(h=1212)
+
+#display 5 digits (in this case 2 decimal points)
+options(digits = 5)
+
+#Filter for 420ppm with some tolerance since these are doubles
+ppm420 <- co2_present_prediction %>% 
+  as.data.frame()%>%
+  filter((.mean <= 422) & (.mean >= 419) )
+#ppm420
+
+#Filter for 500ppm with some tolerance since these are doubles
+ppm500 <- co2_present_prediction %>% 
+  as.data.frame()%>%
+  filter((.mean <= 503) & (.mean >= 497) )
+#ppm500
+
+co2_present_prediction%>%
+  ggplot()+
+  geom_line(aes(x = by_month, y = .mean)) +
+  geom_hline(aes(yintercept = 420, color = "420ppm"), linetype = "dashed")+
+  geom_hline(aes(yintercept = 500, color = "500ppm"), linetype = "dashed")+
+  labs(title = "Predictions for Co2 levels 1998-2122", 
+       color = " ")+
+  ylab("Date")+
+  xlab("Prediction CO2 Level (ppm)")
+```
+
+```{r}
+
+co2_2122 <- co2_present_prediction %>% filter(year(by_month) == 2122)
+mean(co2_2122$.mean)
+
+```
 
 # Conclusions 
 
