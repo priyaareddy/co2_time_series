@@ -1,5 +1,5 @@
 ---
-title: "Global $CO_{2}$ Emissions 1995 and Pressent"
+title: "test - Global $CO_{2}$ Emissions 1995 and Pressent"
 short: "What Keeling missed all these years"
 journal: "AER" # AER, AEJ, PP, JEL
 month: "`r format(Sys.Date(), '%m')`"
@@ -21,7 +21,8 @@ header-includes:
   - '\usepackage{graphicx}'
   - '\usepackage{booktabs}'
   
-output: 'pdf_document'  
+output: 'pdf_document' 
+margin: 1cm
 ---
 
 ```{r load packages, echo = FALSE, message = FALSE, warning=FALSE}
@@ -40,7 +41,6 @@ library(sandwich)
 library(lmtest)
 library(fable)
 library(MASS)
-library(seasonal)
 
 library(blsR)
 
@@ -62,7 +62,10 @@ knitr::opts_chunk$set(dpi=1000)
 ```{r setup, echo=FALSE}
 ## default to not show code, unless we ask for it.
 knitr::opts_chunk$set(echo=FALSE)
-options(digits = 3)
+##default to display all plots centered unless we adjust them
+knitr::opts_chunk$set(fig.align='center')
+##default to display 5 digits of every number
+options(digits = 5)
 ```
 
 
@@ -77,11 +80,14 @@ Understanding a changing climate, and what it means for the earth's inhabitants 
 
 High CO2 levels have been shown to negatively play into climate change, and the increase in atmospheric CO2 has cascading effects from global warming to ocean acidification. Due to these effects, we may notice food supply chain disruptions, natural disasters of increasing intensity, and habitat disruption of all ecosystems and the animal species living there. In an economical sense, understanding these patterns is important so we can prepare for any shifts and uncertainties in global supply chains that might arise for these new climate patterns. In total understanding the patterns in atmospheric CO2 concentrations is important both so that we can mitigate the existing effects of this increase and prevent continuing upwards trends in CO2. In addition if our report findings are significant, the findings could persuade other governmental organizations to increase their CO2 monitoring efforts and global preparedness efforts.
 
+### Measuring Atmospheric Carbion 
+As a background on the data we are using it is important to note that this data measures the mean atmospheric CO2 concentration and was collected at the Mauna Loa Observatory in Hawaii. Mauna Loa Observatory was chosen by Keeling to record the observations since it was far from other continents and had sparse vegetation --  thereby mitigating some of the location influence on the data. The data was also normalized to remove any influence from local contamination. Carbon dioxide measurements at the Mauna Loa Observatory in Hawaii are made with a type of infrared spectrophotometer, now known as a nondispersive infrared sensor, that is calibrated using World Meteorological Organization standards [^Anal. Chem. 2010, 82, 19, 7865–7870. Publication Date:June 11, 2010. https://doi.org/10.1021/ac1001492]. 
+
 ### Historical Trends in Atmospheric Carbon 
 
-In 1958 Charles Keeling began continuous monitoring of atmospheric carbon dioxide concentrations from the Mauna Loa Observatory in Hawaii and soon observed a trend increase carbon dioxide levels in addition to the seasonal cycle. He was able to attribute this trend increase to growth in global rates of fossil fuel combustion. This trend has continued to the present, and is known as the "Keeling Curve,", this curve is plotted below. And we can see in this curve both an overall rising trend in CO2 levels as well as some sort of cyclic or seasonal pattern of atmospheric CO2 fluctuations each year.
+In 1958 Charles Keeling began continuous monitoring of atmospheric carbon dioxide concentrations from the Mauna Loa Observatory in Hawaii and soon observed a trend increase carbon dioxide levels in addition to the seasonal cycle. He was able to attribute this trend increase to growth in global rates of fossil fuel combustion. This trend has continued to the present, and is known as the "Keeling Curve," and is plotted below. At first glance we can see in this curve both an overall upwards trend in CO2 levels as the mean seems to be increasing over time. We can also see some sort of cyclic or seasonal pattern of atmospheric CO2 fluctuations each year.
 
-```{r plot the keeling curve, echo = FALSE}
+```{r plot the keeling curve, echo = FALSE,  fig.width=5.25, fig.height=3.5}
 tsibble::as_tsibble(co2) %>%
   ggplot() + 
   aes(x=index, y=value) + 
@@ -95,24 +101,15 @@ tsibble::as_tsibble(co2) %>%
 ```
 
 
-## Data EDA 
-As a background on the data we are using it is important to note that this data measures the mean atmospheric CO2 concentration and was collected at the Mauna Loa Observatory in Hawaii. The CO2 levels in the data range from 313 parts per million by volume (ppmv) in March 1958 to 406 ppmv in November 2018. The data was also normalized to remove any influence from local contamination. Carbon dioxide measurements at the Mauna Loa Observatory in Hawaii are made with a type of infrared spectrophotometer, now known as a nondispersive infrared sensor, that is calibrated using World Meteorological Organization standards.
-
-
 ```{r,  create co2 ts, echo = FALSE}
+#load in the data as tsibble
 co2_ts <- tsibble::as_tsibble(co2, index = index) 
 colnames(co2_ts)[2] = "co2_val"
 
-#add year and month term
-#co2_ts['year'] = year(co2_ts$index)
-#co2_ts['month'] = month(co2_ts$index)
-
-#create log tsibble
+#create logged co2 tsibble
 log_ts <- co2_ts %>%
   mutate(log_co2 = log(co2_val))
-
 #co2_ts
-
 ```
 
 
@@ -124,50 +121,68 @@ co2_yr <- setNames(aggregate(co2_ts$co2_val, by=list(year(co2_ts$index)), mean),
 #head(co2_yr)
 ```
 
-```{r, co2 ts yearly trend plot, echo = FALSE}
+Looking at the data there are three areas of interest that we may want to look into further -- the upwards trend, the seasonality, and the irregularities we observe in the data. 
+
+To begin with we can look at the trend in our data. To better visualize the trend we can plot the yearly average CO2 level (thereby eliminating the seasonality we observed in our initial plot) over time. 
+
+```{r, co2 ts yearly trend plot, echo = FALSE,  fig.width=5.25, fig.height=3.5}
 #plot the yearly trend in co2
 p6 <- co2_yr %>% 
   ggplot(aes(x = year, y = yr_co2)) + 
   geom_line() + 
-  labs(title = 'CO2 Over Time Annual Trend',
-     y = TeX(r'($CO_2$ parts per million)'))
+  labs(title = TeX(r'(Figure 1. $CO_2$ Level Over Time (Annual Average))'),
+     y = TeX(r'($CO_2$ (ppm))'),
+     x = "Year")
 
 p6
 ```
+We can see in Figure 1, that when we aggregate by year, there is a clearly year-over-year upwards trend in the $CO_2$ levels in the data. The lack of seasonality in this graph also indicates that our previous assumption that the seasonality was yearly is correct. 
 
-```{r EDA ,  echo = FALSE}
-#inital EDA, look at initial plots as well as ACF, pacf, and distribution 
-p1 <- co2_ts %>% 
-  ggplot(aes(x = index, y = co2_val)) + 
-  geom_line() + 
-  labs(title = 'CO2 over Time')
-p2 <- ggAcf(co2_ts$co2_val, type = 'correlation') + labs(title = 'ACF of CO2 Levels')
-p3 <- ggAcf(co2_ts$co2_val, type = 'partial')+ labs(title = 'PACF of CO2 Levels')
-p4 <- gg_lag(co2_val, data = co2_ts)
+This seasonality can be better visualized by plotting CO2 levels for each year that we have observations in our dataset.
+```{r seasonality plot, fig.width=5.25, fig.height=3.5}
+p2 <-co2_ts %>%
+  gg_season(co2_val, labels = "right") +
+  labs(y = "CO2 (ppm)", x = "Month",
+       title = "Figure 2. Seasonal plot: Monthly CO2 levels (ppm)")
+p2
+```
+
+Figure 2 shows a clear seasonal pattern in our data. It appears as though CO2 levels peak at around May and then dip to a minimum in September and October. To further explore our initial observations on seasonality we can look at our ACF, PACF, and Lag plots.
+
+```{r EDA ,  echo = FALSE, message=FALSE}
+#inital EDA, look at  ACF, pacf, distribution, lag
+
+p3 <- ggAcf(co2_ts$co2_val, lag.max = 48, type = 'correlation') + 
+  labs(title = 'Fig 3A. ACF of Monthly CO2')
+
+p4 <- ggAcf(co2_ts$co2_val, type = 'partial', lag.max = 48)+ 
+  labs(title = 'Fig 3B.PACF of Monthly CO2')
+
 p5 <- co2_ts%>%
   ggplot(aes(x=co2_val, y= ..count..))+
   geom_histogram()
 
-   (p1 | p2) /
-   (p3 | p5)/
-    (p4)+
-   plot_annotation(
-     title    = 'Title',
-     subtitle = 'trend by month') & 
-   labs(x = NULL, y = 'CO2') 
+p6 <- co2_ts %>%
+  gg_lag(co2_val, geom = "point", lag=1:12) +
+  labs(title = "Fig 3C. CO2 Lagged scatterplots",
+       y = "CO2 (ppm)",x = "lag(Total, k)")+
+  theme(axis.text.x = element_text(size = 6,angle = 45, hjust = 1))
+
+
+(p3/p4) |p6
+
 ```
 
-Observations:
-- Time Series: From the CO2 Over Time plot, there is an obvious trend of increasing levels throughout time, and we can some regular oscillations which could mean there is seasonality in the data.
-- ACF: There's a gradual decay in the ACF values over the lags, perhaps indicating there is a trend in the data. 
-- PACF: PACF cuts off to zero after lag 2 and stays that way. However, at lags 12 and 13, the values become significant again. This suggests that although the model exhibits AR model-like behavior, there's some deviances in the data.
-- Distribution: 
+In Figure 3C, the lag plot, there is a very strong positive correlation across all lags, reflecting the seasonality of our data.This is also reflected in the ACF plot, Figure 3A, which decays gradually indicating a trend in our data, annd also has a subtle rise in correlation at around every 12th lag. This behavior in the ACF plot indicates a seasonal or cyclic pattern in our data. The Figure 3B PACF cuts off to zero after lag 2 and stays that way. However, at lags 12 and 13, the values become significant again. This suggests that although the model exhibits AR model-like behavior, there's some deviances in the data.
 
->Observations:
-- Time Series: From the yearly CO2 Over Time plot, there is an obvious trend of increasing levels throughout time, but we can see that there is no seasonality now. This points to the period of the seasonal trend being a year.
-- ACF: There's a gradual decay in the ACF values over the lags, indicating there is a still a trend in the data.
+In looking at the patterns in our data we are also interested in assessing whether the upwards trend we observed is accelerating -- that is we want to look at the trend of the growth rate of CO2 levels. At a high level, knowing this could help researchers assess the efficacy of global efforts to curb CO2 emissions.
 
-### Need to fix the EDA plots to better look at the trend, decompose seasonality, and to look at the trend og growth (acceleration)
+```{r}
+
+
+
+```
+
 
 ### Time series decomposition 
 ```{r}
@@ -353,7 +368,7 @@ model.fit %>%
 With the AIC as our selection criteria we have estimated the model to be an ARIMA(1,0,1)(4,1,0)[12] with drift. This model has an AIC of 218, since this was the model that was chosen, this must be the smallest AIC value in the models that we have compared. This ARIMA(1,0,1)(4,1,0)[12] model can be interpreted by saying that there is 1 AR term, 1 MA term, 4 seasonal AR terms and the data had to be seasonally differenced once to be made stationary. the [12] at the end of the model also indicates
 
 
-To be thorough we will also repeat the above process but instead using BIC and AICC as our selection metrics. In general the BIC is stricter than the AIC in penalizing additional parameters in our model, so it is possible that this selection process will result in a different model. When we repeated the above process using the bic or the aicc as our criteria, we found that we were still selecting the exact same ARIMA model, so we will move forwards with this model. 
+To be thorough we will also repeat the above process but instead using BIC and AICC as our selection metrics. In general the BIC is stricter than the AIC in penalizing additional parameters in our model, so it is possible that this selection process will result in a different model. When we repeated the above process using the bic or the aicc as our criteria, we found that we were sitll selecting the exact same ARIMA model, so we will move forwards with this model. 
 
 ```{r BIC ARIMA, echo=FALSE, eval=FALSE}
 #DON'T re-run --> takes a long time and just gives same result as AIC
@@ -385,14 +400,11 @@ When we do this we can then filter our predictions to find the times when the CO
 
 We found that the first time that the atmospheric CO2 levels are predicted to be 420ppm is April 2022, and the last time is October 2024. To be more accurate, we found that the predicted CO2 values will reach 420ppm for the first time sometime in between April 2022 and May 2012 and for the last time sometime in between October 2024 and November 2024. We can also see that the first time that the atmospheric CO2 levels are predicted to be 500ppm is March 2051, and the last time is October 2052. Again, to be more accurate, we found that the predicted CO2 values will reach 500ppm for the first time sometime in between March 2052 and April 2051 and the for the last time sometime in between October 2052 and November 2052. 
 
-```{r}
+```{r fig.width=5.25, fig.height=3.5}
 predictions2 <- quadratic_season %>%
   fabletools::forecast(h=756)
 
 colnames(predictions2)[4] = "point_prediction"
-
-#display 5 digits (in this case 2 decimal points)
-options(digits = 5)
 
 #Filter for 420ppm with some tolerance since these are doubles
 ppm420 <- predictions2 %>% 
@@ -410,27 +422,26 @@ predictions2%>%
   autoplot(.vars = point_prediction)+
   geom_hline(aes(yintercept = 420, color = "420ppm"), linetype = "dashed")+
   geom_hline(aes(yintercept = 500, color = "500ppm"), linetype = "dashed")+
-  labs(title = "Predictions for Co2 levels 1998-2060", 
+  labs(title = "Predictions for Co2 levels (1998-2060)", 
        color = " ")+
   ylab("Date")+
   xlab("Prediction CO2 Level (ppm)")
 ```
 
-### What do we predict CO2 levels will be in 2100 (80 years from now)?
+### What do we predict CO2 levels will be in 2100 (103 years from now)?
 We also want to look at the predictions for our models for the more distant future. Here we will look at what the model predicts will be the CO2 levels in the year 2100. We will also include the confidence intervals for these predictions.
 ```{r}
 #forecast up until the end of 2100 and also calculate confidence interval
 predictions3 <- quadratic_season %>%
-  fabletools::forecast(h=1236)#%>%
-  #hilo(level=95)%>%
-  #unpack_hilo("95%")
+  fabletools::forecast(h=1236)%>%
+  hilo(level=95)%>%
+  unpack_hilo("95%")
 
 #select only the predictions for 2100
 predictions3 <- predictions3[1225:1236,]
 predictions3
 
 ```
-
 
 # Report from the Point of View of the Present 
 
