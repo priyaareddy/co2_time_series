@@ -386,17 +386,41 @@ model.fit %>%
 Now that we have a few different models that do a decent job at modeling our CO2 data, we want to use these models to generate predictions for us. 
 
 ### When will we reach 420 and 500 ppm CO2?
-First we want to see when these models forecast that the atmospheric CO2 levels will reach 420ppm and 500ppm. Since we know there is a overall upwards trend as well as a seasonal component to the CO2 levels, when we generate these predictions we will actually want to look at both the first and the last times that the model predicts the atmospheric CO2 levels to be at these values. We know from our previous predictions for the linear model that even by 2020, the predicted CO2 ppm is not 420 ppm. Of course, there may be some variance in the predictions between the ARIMA and linear model but this does serve as a good guideline.
+First we want to see when these models forecast that the atmospheric CO2 levels will reach 420ppm and 500ppm. Since we know there is a overall upwards trend as well as a seasonal component to the CO2 levels, when we generate these predictions we will actually want to look at both the first and the last times that the model predicts the atmospheric CO2 levels to be at these values. We know from our previous predictions for the linear model that even by 2020, the predicted CO2 ppm is not 420 ppm. Of course, there may be some variance in the predictions between the ARIMA and linear model but this does serve as a good guideline. 
+
+When we do this we can then filter our predictions to find the times when the CO2 levels are predicted to be 420 and 500ppm. We should note that these are approximations as the true predictions from our model are not integers and instead are the mean of a prediction distribution. As a result we had to round these prediction values to find where the predicted CO2 will reach these levels. 
+
+We found that the first time that the atmospheric CO2 levels are predicted to be 420ppm is April 2022, and the last time is October 2024. To be more accurate, we found that the predicted CO2 values will reach 420ppm for the first time sometime in between April 2022 and May 2012 and for the last time sometime in between October 2024 and November 2024. We can also see that the first time that the atmospheric CO2 levels are predicted to be 500ppm is March 2051, and the last time is October 2052. Again, to be more accurate, we found that the predicted CO2 values will reach 500ppm for the first time sometime in between March 2052 and April 2051 and the for the last time sometime in between October 2052 and November 2052. 
 
 ```{r}
 predictions2 <- quadratic_season %>%
-  fabletools::forecast(h=1000)%>%
-  autoplot()
+  fabletools::forecast(h=756)
 
+colnames(predictions2)[4] = "point_prediction"
 
-predictions2+ 
-  geom_hline(yintercept = 420)+
-  geom_hline(yintercept = 500)
+#display 5 digits (in this case 2 decimal points)
+options(digits = 5)
+
+#Filter for 420ppm with some tolerance since these are doubles
+ppm420 <- predictions2 %>% 
+  as.data.frame()%>%
+  filter((point_prediction <= 422) & (point_prediction >= 419) )
+#ppm420
+
+#Filter for 500ppm with some tolerance since these are doubles
+ppm500 <- predictions2 %>% 
+  as.data.frame()%>%
+  filter((point_prediction <= 503) & (point_prediction >= 497) )
+#ppm500
+
+predictions2%>%
+  autoplot(.vars = point_prediction)+
+  geom_hline(aes(yintercept = 420, color = "420ppm"), linetype = "dashed")+
+  geom_hline(aes(yintercept = 500, color = "500ppm"), linetype = "dashed")+
+  labs(title = "Predictions for Co2 levels 1998-2060", 
+       color = " ")+
+  ylab("Date")+
+  xlab("Prediction CO2 Level (ppm)")
 ```
 
 ### What do we predict CO2 levels will be in 2100 (80 years from now)?
