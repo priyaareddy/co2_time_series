@@ -383,13 +383,39 @@ model.fit %>%
 Now that we have a few different models that do a decent job at modeling our CO2 data, we want to use these models to generate predictions for us. 
 
 ### When will we reach 420 and 500 ppm CO2?
-First we want to see when these models forecast that the atmospheric CO2 levels will reach 420ppm and 500ppm. Since we know there is a overall upwards trend as well as a seasonal component to the CO2 levels, when we generate these predictions we will actualy want to look at both the first and the last times that the model predicts the atmospheric CO2 levels to be at these values. 
+First we want to see when these models forecast that the atmospheric CO2 levels will reach 420ppm and 500ppm. Since we know there is a overall upwards trend as well as a seasonal component to the CO2 levels, when we generate these predictions we will actually want to look at both the first and the last times that the model predicts the atmospheric CO2 levels to be at these values. We know from our previous predictions for the linear model that even by 2020, the predicted CO2 ppm is not 420 ppm. Of course, there may be some variance in the predictions between the ARIMA and linear model but this does serve as a good guideline.
 
+```{r}
+predictions2 <- quadratic_season %>%
+  fabletools::forecast(h=1000)
 
+pred_420 <- predictions2 %>% 
+  filter(
+  predictions2[3][[1]] == 420
+)
+
+pred_500 <- predictions2 %>% filter(
+  predictions2[4] == 500
+)
+
+pred_420
+pred_500
+```
 
 ### What do we predict CO2 levels will be in 2100 (80 years from now)?
 We also want to look at the predictions for our models for the more distant future. Here we will look at what the model predicts will be the CO2 levels in the year 2100. We will also include the confidence intervals for these predictions.
+```{r}
+#forecast up until the end of 2100 and also calculate confidence interval
+predictions3 <- quadratic_season %>%
+  fabletools::forecast(h=1246)%>%
+  hilo(level=c(90,95))%>%
+  unpack_hilo("95%")
 
+#select only the predictions for 2100
+predictions3 <- predictions3[1225:1236,]
+predictions3
+
+```
 
 
 # Report from the Point of View of the Present 
