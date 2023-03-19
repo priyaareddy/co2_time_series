@@ -39,6 +39,7 @@ library(stargazer)
 library(sandwich)
 library(lmtest)
 library(fable)
+library(MASS)
 
 library(blsR)
 
@@ -110,7 +111,7 @@ colnames(co2_ts)[2] = "co2_val"
 
 #create log tsibble
 log_ts <- co2_ts %>%
-  mutate(log_co2 = log(co2))
+  mutate(log_co2 = log(co2_val))
 
 #co2_ts
 
@@ -283,7 +284,6 @@ quad_resid<- log_quad_model %>% gg_tsresiduals()
 quad_resid
 sea_resid<-log_quadratic_season %>% gg_tsresiduals()
 sea_resid
-
 #mod1_resi <- ggplot(aes(x=lin_model$fitted.values, y=lin_model$residuals), data = lin_model)+ geom_point()+geom_smooth(se=FALSE)+labs(title = "linear model")
 
 #mod2_resi <- ggplot(aes(x=quad_model$fitted.values, y=quad_model$residuals), data = quad_model)+geom_point()+geom_smooth(se=FALSE)+labs(title = "Time quadratic model")
@@ -301,43 +301,25 @@ sea_resid
 
 ## Model Forecast
 
-```{r}
-log_quadratic_season[1]
-```
 
 ```{r predict 2020}
+#generate predictions for up until 2020
+# there are 23 years from Dec 1997 to Jan 2020 --> 276 months we need to predict for
+predictions <- quadratic_season %>%
+  fabletools::forecast(h=276)%>%
+  autoplot(log_ts)
 
-#create new tsibble for 1998-2020
-#pred_df <- new_data(co2_ts, n = 276) 
-
-#general predictions for pred_df
-library(forecast)
-log_quadratic_season[[1]] %>%
-  forecast::forecast(h=276)
-
-
-```
-
-
-```{r}
-#future_df <- new_data(co2_ts, n = 36)
-
-#poly_model %>% 
-#  forecast(new_data = future_df) %>%
-#  autoplot(co2_ts)
-
-#poly_model %>% forecast(new_data = future_df) %>% autoplot(df)
+predictions
 ```
 
 
 ## ARIMA Models 
 
-Sure we also fit some ARIMA models. And talk about them. 
+We will also generate a few ARIMA models and compare them to our linear model. To select our ARIMA model we use the BIC, the BIC selects against models with too many parameters. 
 
 ```{r}
 model.fit<-co2_ts %>%
-  model(ts.model=ARIMA(co2~0+pdq(0:10,0:2,0:10)+PDQ(0,0,0),ic="bic",greedy=F,stepwise=F))
-
+  model(fable::ARIMA(co2_val ~ 1 + pdq(0:10,0:2,0:10) + PDQ(0:10,0:2,0:10)))
 model.fit$ts.model
 
 model.fit %>% coef()
