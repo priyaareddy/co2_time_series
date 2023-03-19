@@ -66,17 +66,18 @@ options(digits = 3)
 ```
 
 
-Understanding a changing climate, and what it means for the earth's inhabitants is of growing interest to the scientific and policy community. Although, at this point in 1997 it is not entirely clear what the consequences of this growing awareness will be, in this report we present likely outcomes under "business-as-usual" scenarios. In doing so, our hope, is to establish a series of possible futures, and, as evidence, technology, and policy develop over the coming decades, our goal is that we can theb weigh the impacts that carbon-emission reduction efforts might take. 
-
-# Background 
-## Carbon Emissions 
-In this report we seek to understand if atmospheric CO2 levels have increased since 1997 and if we anticipate that this trend will continue. To do this we seek to answer 2 main questions:
+Understanding a changing climate, and what it means for the earth's inhabitants is of growing interest to the scientific and policy community. Although, at this point in 1997 it is not entirely clear what the consequences of this growing awareness will be, in this report we present likely outcomes under "business-as-usual" scenarios. In doing so, our hope, is to establish a series of possible futures, and, as evidence, technology, and policy develop over the coming decades, our goal is that we can theb weigh the impacts that carbon-emission reduction efforts might take. In this report we seek to understand if atmospheric CO2 levels have increased since 1997 and if we anticipate that this trend will continue. To do this we seek to answer 2 main questions:
 > What is the best model we can use to model CO2 levels over time?
 > Using this model, what do we forecast atmospheric CO2 levels will be? And how confident are we in these predictions?
 
+
+
+# Background 
+### Carbon Emissions 
+
 High CO2 levels have been shown to negatively play into climate change, and the increase in atmospheric CO2 has cascading effects from global warming to ocean acidification. Due to these effects, we may notice food supply chain disruptions, natural disasters of increasing intensity, and habitat disruption of all ecosystems and the animal species living there. In an economical sense, understanding these patterns is important so we can prepare for any shifts and uncertainties in global supply chains that might arise for these new climate patterns. In total understanding the patterns in atmospheric CO2 concentrations is important both so that we can mitigate the existing effects of this increase and prevent continuing upwards trends in CO2. In addition if our report findings are significant, the findings could persuade other governmental organizations to increase their CO2 monitoring efforts and global preparedness efforts.
 
-## Historical Trends in Atmospheric Carbon 
+### Historical Trends in Atmospheric Carbon 
 
 In 1958 Charles Keeling began continuous monitoring of atmospheric carbon dioxide concentrations from the Mauna Loa Observatory in Hawaii and soon observed a trend increase carbon dioxide levels in addition to the seasonal cycle. He was able to attribute this trend increase to growth in global rates of fossil fuel combustion. This trend has continued to the present, and is known as the "Keeling Curve,", this curve is plotted below. And we can see in this curve both an overall rising trend in CO2 levels as well as some sort of cyclic or seasonal pattern of atmospheric CO2 fluctuations each year.
 
@@ -93,10 +94,6 @@ tsibble::as_tsibble(co2) %>%
   )
 ```
 
-
-
-# Models and Forecasts 
-In this section, we evaluate two classes of models for answering our questions -- a linear time model and and an ARIMA model to assess which time series model is most appropriate to use to model CO2 levels over time. 
 
 ## Data EDA 
 As a background on the data we are using it is important to note that this data measures the mean atmospheric CO2 concentration and was collected at the Mauna Loa Observatory in Hawaii. The CO2 levels in the data range from 313 parts per million by volume (ppmv) in March 1958 to 406 ppmv in November 2018. The data was also normalized to remove any influence from local contamination. Carbon dioxide measurements at the Mauna Loa Observatory in Hawaii are made with a type of infrared spectrophotometer, now known as a nondispersive infrared sensor, that is calibrated using World Meteorological Organization standards.
@@ -172,8 +169,6 @@ Observations:
 
 ### Need to fix the EDA plots to better look at the trend, decompose seasonality, and to look at the trend og growth (acceleration)
 
-## Linear Models 
-
 ### Time series decomposition 
 ```{r}
 p11 <- co2_ts %>%
@@ -193,6 +188,11 @@ p12
 #grid.arrange(p11,p12, nrow = 1, ncol =2)
 ```
 
+
+# Models and Forecasts 
+In this section, we evaluate two classes of models for answering our questions -- a linear time model and and an ARIMA model to assess which time series model is most appropriate to use to model CO2 levels over time. 
+
+## Linear Models 
 
 To fit linear time trend model to the `co2` series we will compare a regular time trend linear model to a quadratic time trend model. We will also fit a polynomial time trend model that incorporates seasonal dummy variables, and use this model to generate forecasts to the year 2020. Note that we will be evaluating using both the unscaled CO2 and the log(CO2) value for constructing our models.  
 
@@ -357,28 +357,20 @@ To be thorough we will also repeat the above process but instead using BIC and A
 
 ```{r BIC ARIMA, echo=FALSE, eval=FALSE}
 #DON'T re-run --> takes a long time and just gives same result as AIC
-model.fit<-co2_ts %>%
-  model(fable::ARIMA(co2_val ~ 1 + pdq(0:10,0:2,0:10) + PDQ(0:10,0:2,0:10), ic="bic", stepwise=F, greedy=F))
+#model.fit<-co2_ts %>%
+#  model(fable::ARIMA(co2_val ~ 1 + pdq(0:10,0:2,0:10) + PDQ(0:10,0:2,0:10), ic="bic", stepwise=F, greedy=F))
 
-model.fit %>%
-  report()
-
-#model.fit2 %>%
- # augment() %>%
-  #gg_tsdisplay(.resid, plot_type="partial") + labs( title = 'ARIMA(2,1,9)')
+#model.fit %>%
+#  report()
 ```
 
 ```{r AICC arima, echo=FALSE, eval=FALSE}
 #DON'T re-run --> takes a long time and just gives same result as AIC
-model.fit<-co2_ts %>%
-  model(fable::ARIMA(co2_val ~ 1 + pdq(0:10,0:2,0:10) + PDQ(0:10,0:2,0:10), ic="aicc", stepwise=F, greedy=F))
+#model.fit<-co2_ts %>%
+#  model(fable::ARIMA(co2_val ~ 1 + pdq(0:10,0:2,0:10) + PDQ(0:10,0:2,0:10), ic="aicc", stepwise=F, greedy=F))
 
-model.fit %>%
-  report()
-
-#model.fit2 %>%
- # augment() %>%
-  #gg_tsdisplay(.resid, plot_type="partial") + labs( title = 'ARIMA(2,1,9)')
+#model.fit %>%
+#  report()
 ```
 
 
