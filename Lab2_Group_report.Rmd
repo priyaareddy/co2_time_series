@@ -225,6 +225,7 @@ log_quadratic_season <- log_ts %>%
    #       font.size = "small")
 
 ```
+
 ```{r}
 # Convert TSLM objects to tidy data frames
 tidy1 <- tidy(lin_model)
@@ -283,10 +284,10 @@ p42<-augment(log_quadratic_season)%>%
 
 grid.arrange(p37,p38,p39,p40,p41,p42, nrow = 3, ncol = 2)
 ```
->we can see that the log models appear to fit the data slightly better (some overshoot in the linear model around 1980s, whereas less in log linear model). Same with the quadratic models, appears like it's slightly overestimating in the quadratic model and is overestimating less (ie. in the middle of the seasonal variation) in the log quad model. zcan see this in the seasonal model too. Moving forward with working on the log(co2) data.
+We can see that the log models appear to fit the data slightly better (some overshoot in the linear model around 1980s, whereas less in log linear model). Same with the quadratic models, appears like it's slightly overestimating in the quadratic model and is overestimating less (ie. in the middle of the seasonal variation) in the log quad model. zcan see this in the seasonal model too. Moving forward with working on the log(co2) data.
 
 
-```{r, message=FALSE}
+```{r, message=FALSE, echo=FALSE}
 #plot model residuals 
 #might need to delete
 
@@ -296,6 +297,8 @@ quad_resid<- log_quad_model %>% gg_tsresiduals()
 quad_resid
 sea_resid<-log_quadratic_season %>% gg_tsresiduals()
 sea_resid
+
+
 #mod1_resi <- ggplot(aes(x=lin_model$fitted.values, y=lin_model$residuals), data = lin_model)+ geom_point()+geom_smooth(se=FALSE)+labs(title = "linear model")
 
 #mod2_resi <- ggplot(aes(x=quad_model$fitted.values, y=quad_model$residuals), data = quad_model)+geom_point()+geom_smooth(se=FALSE)+labs(title = "Time quadratic model")
@@ -319,7 +322,7 @@ sea_resid
 # there are 23 years from Dec 1997 to Jan 2020 --> 276 months we need to predict for
 predictions <- quadratic_season %>%
   fabletools::forecast(h=276)%>%
-  autoplot(log_ts)
+  autoplot(co2_ts)
 
 predictions
 ```
@@ -387,19 +390,13 @@ First we want to see when these models forecast that the atmospheric CO2 levels 
 
 ```{r}
 predictions2 <- quadratic_season %>%
-  fabletools::forecast(h=1000)
+  fabletools::forecast(h=1000)%>%
+  autoplot()
 
-pred_420 <- predictions2 %>% 
-  filter(
-  predictions2[3][[1]] == 420
-)
 
-pred_500 <- predictions2 %>% filter(
-  predictions2[4] == 500
-)
-
-pred_420
-pred_500
+predictions2+ 
+  geom_hline(yintercept = 420)+
+  geom_hline(yintercept = 500)
 ```
 
 ### What do we predict CO2 levels will be in 2100 (80 years from now)?
@@ -407,8 +404,8 @@ We also want to look at the predictions for our models for the more distant futu
 ```{r}
 #forecast up until the end of 2100 and also calculate confidence interval
 predictions3 <- quadratic_season %>%
-  fabletools::forecast(h=1246)%>%
-  hilo(level=c(90,95))%>%
+  fabletools::forecast(h=1236)%>%
+  hilo(level=95)%>%
   unpack_hilo("95%")
 
 #select only the predictions for 2100
