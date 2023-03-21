@@ -176,15 +176,13 @@ p6 <- co2_ts %>%
 In Figure 3C, the lag plot, there is a very strong positive correlation across all lags, reflecting the seasonality of our data.This is also reflected in the ACF plot, Figure 3A, which decays gradually indicating a trend in our data, annd also has a subtle rise in correlation at around every 12th lag. This behavior in the ACF plot indicates a seasonal or cyclic pattern in our data. The Figure 3B PACF cuts off to zero after lag 2 and stays that way. However, at lags 12 and 13, the values become significant again. This suggests that although the model exhibits AR model-like behavior, there's some deviances in the data.
 
 In looking at the patterns in our data we are also interested in assessing whether the upwards trend we observed is accelerating -- that is we want to look at the trend of the growth rate of CO2 levels. At a high level, knowing this could help researchers assess the efficacy of global efforts to curb CO2 emissions.
-
+### Time series decomposition 
 ```{r}
 
-
+# decomposition
 
 ```
 
-
-### Time series decomposition 
 ```{r}
 p11 <- co2_ts %>%
   ggplot(aes(x = index , y = co2_val ), colour = "gray") +
@@ -234,27 +232,8 @@ quadratic_season <- co2_ts %>%
 #Polynomial model with seasonal dummy (Logged CO2 values)
 log_quadratic_season <- log_ts %>%
   model(trend_model = TSLM(log_co2 ~ trend()+I(trend()^2)+ season())) 
-
-#stargazer(lin_model, quad_model,sea_poly_model, sea_poly_model_log, type = 'text', single.row = TRUE, 
- #         no.space = TRUE, 
-  #        column.sep.width = "3pt", 
-   #       font.size = "small")
-
 ```
 
-```{r}
-#attempting to display stargazer
-# Convert TSLM objects to tidy data frames
-tidy1 <- tidy(lin_model)
-tidy2 <- tidy(quad_model)
-tidy3 <- tidy(quadratic_season)
-
-# Combine tidy data frames into a single data frame
-tidy_all <- rbind(tidy1, tidy2, tidy3)
-
-# Create stargazer table
-stargazer(tidy_all, type = "text", title = "My TSLM Models")
-```
 
 ```{r plot models against data, echo=FALSE}
 p37 <- augment(lin_model)%>%
@@ -353,8 +332,9 @@ We will also generate a few ARIMA models and compare them to our linear model. T
 #takes a while, try to avoid re-running
 #returns ARIMA(1,0,1)(4,1,0)[12] w/ drift
 
+#including the constant because our data does not have a mean of 0 (even if we were to remove the trend)
 model.fit<-co2_ts %>%
-  model(fable::ARIMA(co2_val ~ 0 + pdq(0:10,0:2,0:10) + PDQ(0:10,0:2,0:10), ic="aic", stepwise=F, greedy=F))
+  model(fable::ARIMA(co2_val ~ 1 + pdq(0:10,0:2,0:10) + PDQ(0:10,0:2,0:10), ic="aic", stepwise=F, greedy=F))
 
 model.fit %>%
   report()
@@ -400,13 +380,16 @@ First we want to see when these models forecast that the atmospheric CO2 levels 
 
 When we do this we can then filter our predictions to find the times when the CO2 levels are predicted to be 420 and 500ppm. We should note that these are approximations as the true predictions from our model are not integers and instead are the mean of a prediction distribution. As a result we had to round these prediction values to find where the predicted CO2 will reach these levels. 
 
-We found that the first time that the atmospheric CO2 levels are predicted to be 420ppm is April 2022, and the last time is October 2024. To be more accurate, we found that the predicted CO2 values will reach 420ppm for the first time sometime in between April 2022 and May 2012 and for the last time sometime in between October 2024 and November 2024. We can also see that the first time that the atmospheric CO2 levels are predicted to be 500ppm is March 2051, and the last time is October 2052. Again, to be more accurate, we found that the predicted CO2 values will reach 500ppm for the first time sometime in between March 2052 and April 2051 and the for the last time sometime in between October 2052 and November 2052. 
+We found that the first time that the atmospheric CO2 levels are predicted to be 420ppm is April 2022, and the last time is June 2033. To be more accurate, we found that the predicted CO2 values will reach 420ppm for the first time sometime in between April 2031 and May 2031 and for the last time sometime in between Jun 2033 and July 2033.  We can also see that the first time that the atmospheric CO2 levels are predicted to be 500ppm is May 2084, and the last time is October 2088 Again, to be more accurate, we found that the predicted CO2 values will reach 500ppm for the first time sometime in between April 2084 and May 2084 and the for the last time sometime in between October 2088 and November 2088 
 
 ```{r fig.width=5.25, fig.height=3.5}
 
 #need ARIMA predictions 420: 2020 and 500: 2051
-predictions2 <- quadratic_season %>%
-  fabletools::forecast(h=756)
+predictions2 <- model.fit %>%
+  fabletools::forecast(h=1200)%>%
+  hilo(level=95)%>%
+  unpack_hilo("95%")
+
 
 colnames(predictions2)[4] = "point_prediction"
 
@@ -414,16 +397,21 @@ colnames(predictions2)[4] = "point_prediction"
 ppm420 <- predictions2 %>% 
   as.data.frame()%>%
   filter((point_prediction <= 422) & (point_prediction >= 419) )
-#ppm420
+#ppm420[2:4]
 
 #Filter for 500ppm with some tolerance since these are doubles
 ppm500 <- predictions2 %>% 
   as.data.frame()%>%
   filter((point_prediction <= 503) & (point_prediction >= 497) )
-#ppm500
+#ppm500[2:4]
+
+colnames(predictions2)[5] = "ci_lower"
+colnames(predictions2)[6] = "ci_upper"
+
 
 predictions2%>%
   autoplot(.vars = point_prediction)+
+  geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper), alpha = 0.1)+
   geom_hline(aes(yintercept = 420, color = "420ppm"), linetype = "dashed")+
   geom_hline(aes(yintercept = 500, color = "500ppm"), linetype = "dashed")+
   labs(title = "Predictions for Co2 levels (1998-2060)", 
@@ -436,14 +424,27 @@ predictions2%>%
 We also want to look at the predictions for our models for the more distant future. Here we will look at what the model predicts will be the CO2 levels in the year 2100. We will also include the confidence intervals for these predictions.
 ```{r}
 #forecast up until the end of 2100 and also calculate confidence interval
-predictions3 <- quadratic_season %>%
+predictions3 <- model.fit %>%
   fabletools::forecast(h=1236)%>%
   hilo(level=95)%>%
   unpack_hilo("95%")
 
+colnames(predictions3)[4] = "point_prediction"
+colnames(predictions3)[5] = "ci_lower"
+colnames(predictions3)[6] = "ci_upper"
+
+
 #select only the predictions for 2100
-predictions3 <- predictions3[1225:1236,]
-predictions3
+predictions3 <- predictions3[1225:1236,2:6]
+
+
+predictions3%>%
+  autoplot(.vars = point_prediction)+
+  geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper), alpha = 0.1, linetype="dashed",color="red")+
+  labs(title = "Predictions for Co2 levels in 2100", 
+       color = " ")+
+  ylab("Date")+
+  xlab("Prediction CO2 Level (ppm)")
 
 ```
 
@@ -465,15 +466,21 @@ Conduct the same EDA on this data. Describe how the Keeling Curve evolved from 1
 
 ```{r, echo = FALSE }
 co2_new <- read.csv("./co2_weekly_mlo.csv", header = TRUE, skip = 51)
+co2_new <- co2_new[1:6]
 
 co2_present<- co2_new %>%
-  mutate(time_index = make_datetime(year, month, day)) %>%
+  mutate(time_index = as.Date(make_datetime(year, month, day))) %>%
   mutate(month_index = yearmonth(time_index)) %>%
-  as_tibble(key = time_index) %>%
+  tsibble::as_tsibble(index = month_index, key = time_index) %>%
   filter(ndays != 0) %>%
-  filter(year >= 1997)
+  filter(year > 1997) %>%
+  index_by(date = month_index)%>%
+  dplyr::summarise(co2_avg = mean(average))
 
-head(co2_present)
+colnames(co2_present)[1] = "time_index"
+colnames(co2_present)[2] = "average"
+
+tail(co2_present)
 ```
 
 
@@ -505,23 +512,22 @@ pacf <-ggAcf(co2_present$average, type = 'partial') + labs(title = 'PACF of CO2 
 Descriptively compare realized atmospheric CO2 levels to those predicted by your forecast from a linear time model in 1997 (i.e. "Task 2a"). (You do not need to run any formal tests for this task.) 
 ```{r}
 prediction_lin <- quadratic_season %>%
-  fabletools::forecast(h=276)
+  fabletools::forecast(h=302)
 
 p_linear <- ggplot() +
-  geom_line(aes(x = prediction_lin$index, y = prediction_lin$.mean, colour = "Linear_Model")) +
+  geom_line(aes(x = prediction_lin$index, y = prediction_lin$.mean, colour = "Quadratic Seasonal Model")) +
   geom_line(aes(x = co2_present$time_index, y = co2_present$average, colour = 'Actual')) + 
-  labs(x = "Time", y = 'CO2 levels',
-       title = "linear model") 
+  labs(x = "Date", y = 'CO2 levels (ppm)',
+       title = "Quadratic Seasonal Model Predictions vs Actual Data for 1998-2023", 
+       color = '') 
 
 
 p_linear
 ```
 
-<<<<<<< HEAD
-The linear model is a fairly close match to the actual values. 
-=======
-The linear model deviates from the actual values. Across almost all values, the model underestimates the CO2 levels.
->>>>>>> b37aa76c72691815cf6022a8ab54acadddd3e098
+
+The linear model is a fairly close match to the actual values, it doe seem like from 200-2005 it has a tendency to slightly overestimate the CO2 levels, and then from 2015 to 2020 it appears to slightly underestimate the CO2 levels. 
+
 
 ## (1 point) Task 3b: Compare ARIMA models forecasts against realized CO2  
 
@@ -529,53 +535,52 @@ Descriptively compare realized atmospheric CO2 levels to those predicted by your
 
 ```{r}
 prediction_arima <- model.fit %>%
-  fabletools::forecast(h=312)
+  fabletools::forecast(h=302)
 
 p_arima <- ggplot() +
   geom_line(aes(x = prediction_arima$index, y = prediction_arima$.mean, colour = "Arima_Model")) +
   geom_line(aes(x = co2_present$time_index, y = co2_present$average, colour = 'Actual')) + 
-  labs(x = "Time", y = 'CO2 levels',
-       title = "ARIMA model") 
+  labs(x = "Time", y = 'CO2 levels (ppm)',
+       title = "ARIMA Model Predictions vs Actual Data for 1998-2023", 
+       color = '') 
 
 
 p_arima
 ```
 
-The ARIMA model also deviates from the actual values.The model values are similar until 2000. However, the model starts to undersestimate the CO2 levels. This trend is similar to the linear model.
+The ARIMA model  deviates from the actual values. The model values are similar until 2000, though the model does tend to underestimate the CO2 levels even during this time period. The model really deviates from the actual values at around 2003, as it starts to severely underestimate the CO2 levels. It appears that the keeling curve has shown some acceleration in the increase of the mean over time, and this might explain the gap between the ARIMA model performance and the true CO2 levels.
 
 
 ## (3 points) Task 4b: Evaluate the performance of 1997 linear and ARIMA models 
 
 In 1997 you made predictions about the first time that CO2 would cross 420 ppm. How close were your models to the truth? 
 
+In 1997 we predicted that the CO2 levels would cross 420ppm at around April 2031, but from the actual data we can see that the CO2 levels cross 420ppm by February 2022, which is an almost 10 year difference.
+```{r}
+#Filter for 420ppm with some tolerance since these are doubles
+# cross 420 ppm by 2022 Feb
+ppm420 <- co2_present %>% 
+  as.data.frame()%>%
+  filter((average <= 422) & (average >= 419) )
+#ppm420
+
+```
+
+
 After reflecting on your performance on this threshold-prediction task, continue to use the weekly data to generate a month-average series from 1997 to the present, and compare the overall forecasting performance of your models from Parts 2a and 3b over the entire period. (You should conduct formal tests for this task.) 
 ```{r}
+# Use RMSE as a formal test to evaluate the models 
 
-#need a formal test to evaluate the models 
-#library(Metrics)
+# Calculate the RMSE
+rmse_lin <- sqrt(mean((prediction_lin$.mean - co2_present$average)^2))
+rmse_arima <- sqrt(mean((prediction_arima$.mean - co2_present$average)^2))
 
-#co2 level crossing at 420ppm
-co2_420 <- co2_present %>% filter(average > 419 & average <421)
-print(paste('Year that crosses 420ppm:' ,  as.character(co2_420$year[1])))
-print(paste('Predicted year 420ppm:', year(ppm420$by_month[1])))
+# Print the result
+print(cat("Quadratic Seasonal Model RMSE =", rmse_lin))
+print(cat("ARIMA model RMSE =", rmse_arima))
 ```
 
-The year that the co2 level crosses 420ppm is 2021, which is a year earlier than the predicted year of 2022. While the years are not too far off, this suggests that the actual growth rate of co2 levels are accelerating.
-
-
-```{r}
-
-#make data month-average series from 1997 to the present:
-co2_present_bymonth <- setNames(aggregate(co2_present$average, by=list(co2_present$month_index), mean), 
-                      c("by_month", "tot_CO2"))
-
-#head(co2_present_bymonth)
-co2_present_bymonth %>%
-  as_tsibble(index=by_month) %>%
-  gg_tsdisplay(tot_CO2, plot_type="partial") + xlab( "Date") + ylab( "CO2 (ppm)")
-```
-
-
+We can see that the ARIMA model performs worse than the quadratic seasonal model by an order of roughly 10. On average the Quadratic Seasonal model prediction is off by about 0.79235 ppm and on average the ARIMA model is off by acout 8.6259 ppm. 
 
 ## (4 points) Task 5b: Train best models on present data
 
@@ -586,8 +591,10 @@ Seasonally adjust the weekly NOAA data, and split both seasonally-adjusted (SA) 
 # Seasonally adjust the data
 co2_present_sa <- setNames(aggregate(co2_present$average, by=list(year(co2_present$time_index)), mean), 
                       c("year", "yr_co2"))
-co2_present_nsa <- setNames(aggregate(co2_present$average, by=list(co2_present$month_index), mean), 
-                      c("by_month", "tot_CO2"))
+co2_present_nsa <- co2_present
+  
+  #setNames(aggregate(co2_present$average, by=list(co2_present$time_index), mean), 
+                     # c("by_month", "tot_CO2"))
 
 
 #Split into training and test
@@ -596,9 +603,9 @@ co2_test_sa <- co2_present_sa %>% filter(year > max(year)-2)  %>% as_tsibble(ind
 
 
 co2_train_nsa <- co2_present_nsa %>% 
-  as_tsibble(index=by_month) %>% filter(year(by_month) <= max(year(by_month))-2) 
+  as_tsibble(index=time_index) %>% filter(year(time_index) <= max(year(time_index))-2) 
 co2_test_nsa <- co2_present_nsa %>% 
-  as_tsibble(index=by_month) %>% filter(year(by_month) > max(year(by_month))-2) 
+  as_tsibble(index=time_index) %>% filter(year(time_index) > max(year(time_index))-2) 
 
 #Fit the seasonally adjusted model
 sa.model.fit <-co2_train_sa %>%
@@ -614,11 +621,11 @@ sa.model.graph <- augment(sa.model.fit)%>%
 
 #Fit the non-seasonally adjusted model
 nsa.model.fit <-co2_train_nsa %>%
-  model(fable::ARIMA(tot_CO2 ~ 1 + pdq(0:10,0:2,0:10) + PDQ(0:10,0:2,0:10), ic="aic", stepwise=F, greedy=F))
+  model(fable::ARIMA(average ~ 1 + pdq(0:10,0:2,0:10) + PDQ(0:10,0:2,0:10), ic="aic", stepwise=F, greedy=F))
 
 nsa.model.graph <- augment(nsa.model.fit)%>%
-  ggplot(aes(x = by_month)) +
-  geom_line(aes(y = tot_CO2, colour = "Data")) +
+  ggplot(aes(x = time_index)) +
+  geom_line(aes(y = average, colour = "Data")) +
   geom_line(aes(y = .fitted, colour = "Fitted")) +
   labs(y = "Time",
        title = "Non-Seasonally Adjusted Model") 
@@ -649,7 +656,7 @@ sa_prediction <- sa.model.fit %>%
 nsa_prediction <- nsa.model.fit %>%
   fabletools::forecast(h=14, level = 0.95) %>%
   autoplot() +
-  geom_line(aes(x = co2_test_nsa$by_month, y = co2_test_nsa$tot_CO2, colour = 'Actual')) + 
+  geom_line(aes(x = co2_test_nsa$time_index, y = co2_test_nsa$average, colour = 'Actual')) + 
   labs(x = "Time", y = 'CO2 levels',
        title = "Non Seasonally Adjusted Model (ARIMA) Prediction vs Actual") 
 
