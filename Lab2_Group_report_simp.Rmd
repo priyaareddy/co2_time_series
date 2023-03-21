@@ -1,5 +1,5 @@
 ---
-title: "Global $CO_{2}$ Emissions 1995 and Pressent"
+title: "Global $CO_{2}$ Emissions 1995 and Present"
 subtitle: "What Keeling missed all these years"
 author: "Yuna Kim, Jinsoo Chung, Priya Reddy, Jocelyn Thai"
 output: bookdown::pdf_document2
@@ -50,19 +50,17 @@ knitr::opts_chunk$set(fig.align='center')
 options(digits = 5)
 ```
 
-
-Understanding a changing climate, and what it means for the earth's inhabitants is of growing interest to the scientific and policy community. Although, at this point in 1997 it is not entirely clear what the consequences of this growing awareness will be, in this report we present likely outcomes under "business-as-usual" scenarios. In doing so, our hope, is to establish a series of possible futures, and, as evidence, technology, and policy develop over the coming decades, our goal is that we can theb weigh the impacts that carbon-emission reduction efforts might take. In this report we seek to understand if atmospheric CO2 levels have increased since 1997 and if we anticipate that this trend will continue. To do this we seek to answer 2 main questions:
-> What is the best model we can use to model CO2 levels over time?
-> Using this model, what do we forecast atmospheric CO2 levels will be? And how confident are we in these predictions?
-
-
-
 # Background 
+
+### Abstract
+Understanding a changing climate, and what it means for the earth's inhabitants is of growing interest to the scientific and policy community. Although, at this point in 1997 it is not entirely clear what the consequences of this growing awareness will be, in this report we present likely outcomes under "business-as-usual" scenarios. In doing so, our hope, is to establish a series of possible futures, and, as evidence, technology, and policy develop over the coming decades, our goal is that we can theb weigh the impacts that carbon-emission reduction efforts might take. In this report we seek to understand if atmospheric CO2 levels have increased since 1997 and if we anticipate that this trend will continue. To do this we seek to answer 2 main questions:
+1. What is the best model we can use to model CO2 levels over time?
+2. Using this model, what do we forecast atmospheric CO2 levels will be? And how confident are we in these predictions?
+
 ### Carbon Emissions 
 High CO2 levels have been shown to negatively play into climate change, and the increase in atmospheric CO2 has cascading effects from global warming to ocean acidification. Due to these effects, we may notice food supply chain disruptions, natural disasters of increasing intensity, and habitat disruption of all ecosystems and the animal species living there. In an economical sense, understanding these patterns is important so we can prepare for any shifts and uncertainties in global supply chains that might arise for these new climate patterns. In total understanding the patterns in atmospheric CO2 concentrations is important both so that we can mitigate the existing effects of this increase and prevent continuing upwards trends in CO2. In addition if our report findings are significant, the findings could persuade other governmental organizations to increase their CO2 monitoring efforts and global preparedness efforts.
 
 ### Historical Trends in Atmospheric Carbon 
-
 In 1958 Charles Keeling began continuous monitoring of atmospheric carbon dioxide concentrations from the Mauna Loa Observatory in Hawaii and soon observed a trend increase carbon dioxide levels in addition to the seasonal cycle. He was able to attribute this trend increase to growth in global rates of fossil fuel combustion. This trend has continued to the present, and is known as the "Keeling Curve," and is plotted below. At first glance we can see in this curve both an overall upwards trend in CO2 levels as the mean seems to be increasing over time. We can also see some sort of cyclic or seasonal pattern of atmospheric CO2 fluctuations each year.
 
 ```{r plot the keeling curve, echo = FALSE,  fig.width=5.25, fig.height=3.5}
@@ -407,9 +405,7 @@ The linear model is a fairly close match to the actual values, it doe seem like 
 The ARIMA model  deviates from the actual values. The model values are similar until 2000, though the model does tend to underestimate the CO2 levels even during this time period. The model really deviates from the actual values at around 2003, as it starts to severely underestimate the CO2 levels. It appears that the keeling curve has shown some acceleration in the increase of the mean over time, and this might explain the increasing gap between the ARIMA model performance and the true CO2 levels as we move away from 1997.
 
 
-## (3 points) Task 4b: Evaluate the performance of 1997 linear and ARIMA models 
-
-In 1997 you made predictions about the first time that CO2 would cross 420 ppm. How close were your models to the truth? 
+## Evaluate the performance of 1997 linear and ARIMA models 
 
 In 1997 we predicted that the CO2 levels would cross 420ppm at around April 2038, but from the actual data we can see that the CO2 levels cross 420ppm by February 2022, which is an about a 15 year difference. This is in-line with what we observed in our ARIMA model predictions as the  ARIMA model was underestimating the CO2 levels in comparison to the actual CO2 levels.
 ````{r, echo = FALSE}
@@ -421,7 +417,6 @@ ppm420 <- co2_present %>%
 #ppm420
 
 ```
-
 
 We can also assess the overall performance of our model using a test metric such as the RMSE. The RMSE is the root mean squared error and is a metric that captures on average how far our predictions are from the actual values. It is calculated with the formula $\sqrt{\sum_{i=1}^{N}\frac{(y_{i}-\hat{y}_i)}{N}}$ where N is the number of observations, $y_i$ is the ith actual CO2 value and $\hat{y}_i$ is the ith CO2 prediction -- in essence we are squaring the sum of the differences between the actual and predicted values, and then dividing by the number of observations before taking the square root. When we calculate the RMSE for our two models of interest we can see that the ARIMA model performs worse than the quadratic seasonal model by an order of roughly 10. The Quadratic Seasonal model's RMSE is 0.79235, meaning that on average the Quadratic Seasonal model prediction is off by about 0.79235 ppm. By contrast the ARIMA model RMSE is 8.6259 meaning that on average the ARIMA model is off by acout 8.6259 ppm. 
 
@@ -438,7 +433,7 @@ print(cat("ARIMA model RMSE =", rmse_arima))
 ```
 
 
-## (4 points) Task 5b: Train best models on present data
+## Train best models on present data
 
 Seasonally adjust the weekly NOAA data, and split both seasonally-adjusted (SA) and non-seasonally-adjusted (NSA) series into training and test sets, using the last two years of observations as the test sets. For both SA and NSA series, fit ARIMA models using all appropriate steps. Measure and discuss how your models perform in-sample and (psuedo-) out-of-sample, comparing candidate models and explaining your choice. In addition, fit a polynomial time-trend model to the seasonally-adjusted series and compare its performance to that of your ARIMA model.
 
@@ -530,7 +525,7 @@ sa_prediction / quad_predictions /  nsa_prediction
 
 Both seasonally adjusted and non-seasonally adjust models perform well. The data fits perfectly within the training dataset. with forecasts, the seasonally adjust model falls short, deviating from the actual model. The non-seasonally adjusted ARIMA model predicts close to what the actual values were.The quadratic model performs the worst compared to the ARIMA model when using Seasonally Adjusted models.
 
-## (3 points) Task Part 6b: How bad could it get?
+## How bad could it get?
 
 With the non-seasonally adjusted data series, generate predictions for when atmospheric CO2 is expected to be at 420 ppm and 500 ppm levels for the first and final times (consider prediction intervals as well as point estimates in your answer). Generate a prediction for atmospheric CO2 levels in the year 2122. How confident are you that these will be accurate predictions?
 
