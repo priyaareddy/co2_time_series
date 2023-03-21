@@ -12,7 +12,7 @@ keywords:
 author:
   - name: Yuna Kim, Jinsoo Chung, Priya Reddy, Jocelyn Thai
 acknowledgements: | 
-  The authors would like to thank their instructors from MIDS 271 as well as acknowledge the foundational research and data collection work done by harles Keeling.
+  The authors would like to thank their instructors from MIDS 271 as well as acknowledge the foundational research and data collection work done by Charles Keeling.
   
 abstract: | 
   Global average temperatures have increased by more than 1℃ from pre-industrial times to now, and it's common scientific belief that the increase of carbon emissions worldwide has played a critical role in this global warming. Scientists believe that one of the primary drivers of climate change is that continued, and increasing, human emissions of carbon dioxide and other greenhouse gases into the atmosphere. This rapid global warming can have and already has had significant impacts on global and local climates as well as natural and industrial systems across the world. Studying CO2 presense in the atmosphere is important in this context then in order to better understand not only one of the drivers of climate change, and in order to ascertain what steps we might be able to take to predict and manage the effects that will arise as a result of it.
@@ -243,6 +243,7 @@ log_quadratic_season <- log_ts %>%
 ```
 
 ```{r}
+#attempting to display stargazer
 # Convert TSLM objects to tidy data frames
 tidy1 <- tidy(lin_model)
 tidy2 <- tidy(quad_model)
@@ -351,8 +352,9 @@ We will also generate a few ARIMA models and compare them to our linear model. T
 ```{r}
 #takes a while, try to avoid re-running
 #returns ARIMA(1,0,1)(4,1,0)[12] w/ drift
+
 model.fit<-co2_ts %>%
-  model(fable::ARIMA(co2_val ~ 1 + pdq(0:10,0:2,0:10) + PDQ(0:10,0:2,0:10), ic="aic", stepwise=F, greedy=F))
+  model(fable::ARIMA(co2_val ~ 0 + pdq(0:10,0:2,0:10) + PDQ(0:10,0:2,0:10), ic="aic", stepwise=F, greedy=F))
 
 model.fit %>%
   report()
@@ -401,6 +403,8 @@ When we do this we can then filter our predictions to find the times when the CO
 We found that the first time that the atmospheric CO2 levels are predicted to be 420ppm is April 2022, and the last time is October 2024. To be more accurate, we found that the predicted CO2 values will reach 420ppm for the first time sometime in between April 2022 and May 2012 and for the last time sometime in between October 2024 and November 2024. We can also see that the first time that the atmospheric CO2 levels are predicted to be 500ppm is March 2051, and the last time is October 2052. Again, to be more accurate, we found that the predicted CO2 values will reach 500ppm for the first time sometime in between March 2052 and April 2051 and the for the last time sometime in between October 2052 and November 2052. 
 
 ```{r fig.width=5.25, fig.height=3.5}
+
+#need ARIMA predictions 420: 2020 and 500: 2051
 predictions2 <- quadratic_season %>%
   fabletools::forecast(h=756)
 
@@ -500,7 +504,7 @@ pacf <-ggAcf(co2_present$average, type = 'partial') + labs(title = 'PACF of CO2 
 
 Descriptively compare realized atmospheric CO2 levels to those predicted by your forecast from a linear time model in 1997 (i.e. "Task 2a"). (You do not need to run any formal tests for this task.) 
 ```{r}
-prediction_lin <- lin_model %>%
+prediction_lin <- quadratic_season %>%
   fabletools::forecast(h=276)
 
 p_linear <- ggplot() +
@@ -513,7 +517,7 @@ p_linear <- ggplot() +
 p_linear
 ```
 
-The linear model deviates from the actual Co2 levels.
+The linear model is a fairly close match to the actual values. 
 
 ## (1 point) Task 3b: Compare ARIMA models forecasts against realized CO2  
 
@@ -521,7 +525,7 @@ Descriptively compare realized atmospheric CO2 levels to those predicted by your
 
 ```{r}
 prediction_arima <- model.fit %>%
-  fabletools::forecast(h=276)
+  fabletools::forecast(h=312)
 
 p_arima <- ggplot() +
   geom_line(aes(x = prediction_arima$index, y = prediction_arima$.mean, colour = "Arima_Model")) +
@@ -542,6 +546,8 @@ In 1997 you made predictions about the first time that CO2 would cross 420 ppm. 
 
 After reflecting on your performance on this threshold-prediction task, continue to use the weekly data to generate a month-average series from 1997 to the present, and compare the overall forecasting performance of your models from Parts 2a and 3b over the entire period. (You should conduct formal tests for this task.) 
 ```{r}
+#need a formal test to evaluate the models 
+#library(Metrics)
 #make data month-average series from 1997 to the present:
 co2_present_bymonth <- setNames(aggregate(co2_present$average, by=list(co2_present$month_index), mean), 
                       c("by_month", "tot_CO2"))
@@ -549,7 +555,7 @@ co2_present_bymonth <- setNames(aggregate(co2_present$average, by=list(co2_prese
 #head(co2_present_bymonth)
 co2_present_bymonth %>%
   as_tsibble(index=by_month) %>%
-  gg_tsdisplay(tot_CO2, plot_type="partial") + xlab( "Date") + ylab( "US Total Cases")
+  gg_tsdisplay(tot_CO2, plot_type="partial") + xlab( "Date") + ylab( "CO2 (ppm)")
 ```
 
 
