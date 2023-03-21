@@ -1,28 +1,10 @@
 ---
 title: "test - Global $CO_{2}$ Emissions 1995 and Pressent"
-short: "What Keeling missed all these years"
-journal: "AER" # AER, AEJ, PP, JEL
-month: "`r format(Sys.Date(), '%m')`"
-year: "`r format(Sys.Date(), '%Y')`"
-vol: 0
-issue: 0
-keywords:
-  - Replication
-  - Modern Science
-author:
-  - name: Yuna Kim, Jinsoo Chung, Priya Reddy, Jocelyn Thai
-acknowledgements: | 
-  The authors would like to thank their instructors from MIDS 271 as well as acknowledge the foundational research and data collection work done by Charles Keeling.
-  
-abstract: | 
-  Global average temperatures have increased by more than 1℃ from pre-industrial times to now, and it's common scientific belief that the increase of carbon emissions worldwide has played a critical role in this global warming. Scientists believe that one of the primary drivers of climate change is that continued, and increasing, human emissions of carbon dioxide and other greenhouse gases into the atmosphere. This rapid global warming can have and already has had significant impacts on global and local climates as well as natural and industrial systems across the world. Studying CO2 presense in the atmosphere is important in this context then in order to better understand not only one of the drivers of climate change, and in order to ascertain what steps we might be able to take to predict and manage the effects that will arise as a result of it.
-  
-header-includes: 
-  - '\usepackage{graphicx}'
-  - '\usepackage{booktabs}'
-  
-output: 'pdf_document' 
-margin: 1cm
+subtitle: "What Keeling missed all these years"
+author: "Yuna Kim, Jinsoo Chung, Priya Reddy, Jocelyn Thai"
+output: bookdown::pdf_document2
+fontsize: 11pt
+geometry: margin=1in
 ---
 
 ```{r load packages, echo = FALSE, message = FALSE, warning=FALSE}
@@ -134,7 +116,6 @@ p6 <- co2_yr %>%
      y = TeX(r'($CO_2$ (ppm))'),
      x = "Year")
 
-p6
 ```
 We can see in Figure 1, that when we aggregate by year, there is a clearly year-over-year upwards trend in the $CO_2$ levels in the data. The lack of seasonality in this graph also indicates that our previous assumption that the seasonality was yearly is correct. 
 
@@ -144,7 +125,7 @@ p2 <-co2_ts %>%
   gg_season(co2_val, labels = "right") +
   labs(y = "CO2 (ppm)", x = "Month",
        title = "Figure 2. Seasonal plot: Monthly CO2 levels (ppm)")
-p2
+(p6 + p2 )
 ```
 
 Figure 2 shows a clear seasonal pattern in our data. It appears as though CO2 levels peak at around May and then dip to a minimum in September and October. To further explore our initial observations on seasonality we can look at our ACF, PACF, and Lag plots.
@@ -176,31 +157,6 @@ p6 <- co2_ts %>%
 In Figure 3C, the lag plot, there is a very strong positive correlation across all lags, reflecting the seasonality of our data.This is also reflected in the ACF plot, Figure 3A, which decays gradually indicating a trend in our data, annd also has a subtle rise in correlation at around every 12th lag. This behavior in the ACF plot indicates a seasonal or cyclic pattern in our data. The Figure 3B PACF cuts off to zero after lag 2 and stays that way. However, at lags 12 and 13, the values become significant again. This suggests that although the model exhibits AR model-like behavior, there's some deviances in the data.
 
 In looking at the patterns in our data we are also interested in assessing whether the upwards trend we observed is accelerating -- that is we want to look at the trend of the growth rate of CO2 levels. At a high level, knowing this could help researchers assess the efficacy of global efforts to curb CO2 emissions.
-### Time series decomposition 
-```{r}
-
-# decomposition
-
-```
-
-```{r}
-p11 <- co2_ts %>%
-  ggplot(aes(x = index , y = co2_val ), colour = "gray") +
-  geom_line(aes(y = co2_val), colour = "#D55E00") +
-  labs(y = "CO2 emmision ", x="Date",
-    title = "CO2 emmission")
-
-p12 <- log_ts %>%
-  ggplot(aes(x = index  , y = log_co2 )) +
-  geom_line(aes(y= log_co2 ), colour = "#D55E00") +
-  labs(y = " Log of CO2 emmision ", x="Date",
-    title = "Log of CO2 emmission")
-
-p11
-p12
-#grid.arrange(p11,p12, nrow = 1, ncol =2)
-```
-
 
 # Models and Forecasts 
 In this section, we evaluate two classes of models for answering our questions -- a linear time model and and an ARIMA model to assess which time series model is most appropriate to use to model CO2 levels over time. 
@@ -280,18 +236,18 @@ p42<-augment(log_quadratic_season)%>%
 
 grid.arrange(p37,p38,p39,p40,p41,p42, nrow = 3, ncol = 2)
 ```
-We can see that the log models appear to fit the data slightly better (some overshoot in the linear model around 1980s, whereas less in log linear model). Same with the quadratic models, appears like it's slightly overestimating in the quadratic model and is overestimating less (ie. in the middle of the seasonal variation) in the log quad model. zcan see this in the seasonal model too. Moving forward with working on the log(co2) data.
+We can see that the log models appear to fit the data slightly better (some overshoot in the linear model around 1980s, whereas less in log linear model). Same with the quadratic models, appears like it's slightly overestimating in the quadratic model and is overestimating less (ie. in the middle of the seasonal variation) in the log quad model. We can see this in the seasonal model too. Moving forward with working on the log(co2) data.
 
 
 ```{r, message=FALSE, echo=FALSE}
 #plot model residuals 
 #might need to delete
 
-lin_resid <- log_lin_model %>% gg_tsresiduals()
+lin_resid <- log_lin_model %>% gg_tsresiduals()+labs(title = "linear model")
 lin_resid
-quad_resid<- log_quad_model %>% gg_tsresiduals()
+quad_resid<- log_quad_model %>% gg_tsresiduals()+labs(title = "log quadratic model")
 quad_resid
-sea_resid<-log_quadratic_season %>% gg_tsresiduals()
+sea_resid<-log_quadratic_season %>% gg_tsresiduals()+labs(title = "log quad seasonal model")
 sea_resid
 
 
@@ -312,8 +268,9 @@ sea_resid
 
 ## Model Forecast
 
+We chose the quadratic seasonal model to model forecast up to year 2020.
 
-```{r predict 2020}
+```{r predict 2020, echo = FALSE}
 #generate predictions for up until 2020
 # there are 23 years from Dec 1997 to Jan 2020 --> 276 months we need to predict for
 predictions <- quadratic_season %>%
@@ -326,7 +283,7 @@ predictions
 
 ## ARIMA Models 
 
-We will also generate a few ARIMA models and compare them to our linear model. To select our ARIMA model we use the AIC, the AIC selects against models with too many parameters. We know that there is a seasonal component to our data, so we will also select for seasonal AR and MA values and check if seasonal differencing will make the data stationary. I am choosing to use the ARIMA() function to select our data. This method will determine the optimal p,d,q,P,D,Q values as well as the optimal levels of differencing for us to have stationary data and will then select a model based on the metric we have chosen as our criteria (AIC). We can see interpret the resulting ARIMA model in terms of the number of (seasonal) AR terms, the level of differencing to acheive stationary data, and the (seasonalWe are including seasonality in our model because we can see in the decomposition as well as the time series plots that there is a strong possibility of a seasonal component in the CO2 levels. If adding a seasonal component improves the AIC score then such a model will be chosen.
+We will also generate a few ARIMA models and compare them to our linear model. To select our ARIMA model we use the AIC, the AIC selects against models with too many parameters. We know that there is a seasonal component to our data, so we will also select for seasonal AR and MA values and check if seasonal differencing will make the data stationary. I am choosing to use the ARIMA() function to select our data. This method will determine the optimal p,d,q,P,D,Q values as well as the optimal levels of differencing for us to have stationary data and will then select a model based on the metric we have chosen as our criteria (AIC). We can interpret the resulting ARIMA model in terms of the number of (seasonal) AR terms, the level of differencing to acheive stationary data. We are including seasonality in our model because we can see in the decomposition as well as the time series plots that there is a strong possibility of a seasonal component in the CO2 levels. If adding a seasonal component improves the AIC score then such a model will be chosen.
 
 ```{r}
 #takes a while, try to avoid re-running
@@ -505,46 +462,29 @@ pacf <-ggAcf(co2_present$average, type = 'partial') + labs(title = 'PACF of CO2 
 (timeplot + hist) / (acf + pacf)
 ```
 
-## (1 point) Task 2b: Compare linear model forecasts against realized CO2
+## Compare linear and Arima model forecasts against realized CO2
 
 Descriptively compare realized atmospheric CO2 levels to those predicted by your forecast from a linear time model in 1997 (i.e. "Task 2a"). (You do not need to run any formal tests for this task.) 
 ```{r}
 prediction_lin <- quadratic_season %>%
   fabletools::forecast(h=302)
 
-p_linear <- ggplot() +
-  geom_line(aes(x = prediction_lin$index, y = prediction_lin$.mean, colour = "Quadratic Seasonal Model")) +
+prediction_arima <- model.fit %>%
+  fabletools::forecast(h=302)
+
+p_compare <- ggplot() +
+  geom_line(aes(x = prediction_lin$index, y = prediction_lin$.mean, colour = "Quadratic Seasonal Linear Model")) +
+  geom_line(aes(x = prediction_arima$index, y = prediction_arima$.mean, colour = "Arima Model")) +
   geom_line(aes(x = co2_present$time_index, y = co2_present$average, colour = 'Actual')) + 
   labs(x = "Date", y = 'CO2 levels (ppm)',
        title = "Quadratic Seasonal Model Predictions vs Actual Data for 1998-2023", 
        color = '') 
 
-
-p_linear
+p_compare
 ```
 
 
 The linear model is a fairly close match to the actual values, it doe seem like from 200-2005 it has a tendency to slightly overestimate the CO2 levels, and then from 2015 to 2020 it appears to slightly underestimate the CO2 levels. 
-
-
-## (1 point) Task 3b: Compare ARIMA models forecasts against realized CO2  
-
-Descriptively compare realized atmospheric CO2 levels to those predicted by your forecast from the ARIMA model that you fitted in 1997 (i.e. "Task 3a"). Describe how the Keeling Curve evolved from 1997 to the present. 
-
-```{r}
-prediction_arima <- model.fit %>%
-  fabletools::forecast(h=302)
-
-p_arima <- ggplot() +
-  geom_line(aes(x = prediction_arima$index, y = prediction_arima$.mean, colour = "Arima_Model")) +
-  geom_line(aes(x = co2_present$time_index, y = co2_present$average, colour = 'Actual')) + 
-  labs(x = "Time", y = 'CO2 levels (ppm)',
-       title = "ARIMA Model Predictions vs Actual Data for 1998-2023", 
-       color = '') 
-
-
-p_arima
-```
 
 The ARIMA model  deviates from the actual values. The model values are similar until 2000, though the model does tend to underestimate the CO2 levels even during this time period. The model really deviates from the actual values at around 2003, as it starts to severely underestimate the CO2 levels. It appears that the keeling curve has shown some acceleration in the increase of the mean over time, and this might explain the increasing gap between the ARIMA model performance and the true CO2 levels as we move away from 1997.
 
@@ -583,7 +523,6 @@ print(cat("ARIMA model RMSE =", rmse_arima))
 ## (4 points) Task 5b: Train best models on present data
 
 Seasonally adjust the weekly NOAA data, and split both seasonally-adjusted (SA) and non-seasonally-adjusted (NSA) series into training and test sets, using the last two years of observations as the test sets. For both SA and NSA series, fit ARIMA models using all appropriate steps. Measure and discuss how your models perform in-sample and (psuedo-) out-of-sample, comparing candidate models and explaining your choice. In addition, fit a polynomial time-trend model to the seasonally-adjusted series and compare its performance to that of your ARIMA model.
-
 
 ```{r, warnings = FALSE}
 # Seasonally adjust the data
@@ -700,8 +639,8 @@ co2_present_pred_graph <- co2_present_prediction %>%
   geom_hline(aes(yintercept = 500, color = "500ppm"), linetype = "dashed")+
   labs(title = "Predictions for Co2 levels 1998-2122", 
        color = " ")+
-  ylab("Date")+
-  xlab("Prediction CO2 Level (ppm)")
+  ylab("Prediction CO2 Level (ppm)")+
+  xlab("Date")
 
 #display 5 digits (in this case 2 decimal points)
 options(digits = 5)
@@ -730,8 +669,6 @@ mean(co2_2122$.mean)
 It's predicted that the average co2 level in 2122 would be 637.42 ppm. There's a possibility that the actual values are worse than predicted judging from the predictions in the Keeling curve. If there's no mitigation in the co2 levels in the future, the co2 levels won't likely decline.
 
 # Conclusions 
-
-What to conclude is unclear. 
 
 
 While the most plausible model that we estimate is reported in the main, "Modeling" section, in this appendix to the article we examine alternative models. Here, our intent is to provide a skeptic that does not accept our assessment of this model as an ARIMA of order (1,2,3) an understanding of model forecasts under alternative scenarios. 
