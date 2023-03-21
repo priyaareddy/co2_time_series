@@ -106,7 +106,7 @@ To begin with we can look at the trend in our data. To better visualize the tren
 p6 <- co2_yr %>% 
   ggplot(aes(x = year, y = yr_co2)) + 
   geom_line() + 
-  labs(title = TeX(r'(Figure 1. $CO_2$ Annual Average'),
+  labs(title = "Figure 1. CO2 Annual Average",
      y = TeX(r'($CO_2$ (ppm))'),
      x = "Year")
 
