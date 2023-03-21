@@ -380,13 +380,11 @@ First we want to see when these models forecast that the atmospheric CO2 levels 
 
 When we do this we can then filter our predictions to find the times when the CO2 levels are predicted to be 420 and 500ppm. We should note that these are approximations as the true predictions from our model are not integers and instead are the mean of a prediction distribution. As a result we had to round these prediction values to find where the predicted CO2 will reach these levels. 
 
-We found that the first time that the atmospheric CO2 levels are predicted to be 420ppm is April 2022, and the last time is June 2033. To be more accurate, we found that the predicted CO2 values will reach 420ppm for the first time sometime in between April 2031 and May 2031 and for the last time sometime in between Jun 2033 and July 2033.  We can also see that the first time that the atmospheric CO2 levels are predicted to be 500ppm is May 2084, and the last time is October 2088 Again, to be more accurate, we found that the predicted CO2 values will reach 500ppm for the first time sometime in between April 2084 and May 2084 and the for the last time sometime in between October 2088 and November 2088 
+Our ARIMA model predicts that the first time that the atmospheric CO2 levels will to be 420ppm is April 2038, and the last time is October 2042. To be more accurate, we found that the predicted CO2 values will reach 420ppm for the first time sometime in between March 2038 and April 2038 and for the last time sometime in between September 2042 and October 2042.  We can also see that the first time that the atmospheric CO2 levels are predicted to be 500ppm is March 2101, and the last time is October 2105 Again, to be more accurate, we found that the predicted CO2 values will reach 500ppm for the first time sometime in between March 2101 and April 2101 and the for the last time sometime in between October 2105 and November 2105. 
 
 ```{r fig.width=5.25, fig.height=3.5}
-
-#need ARIMA predictions 420: 2020 and 500: 2051
 predictions2 <- model.fit %>%
-  fabletools::forecast(h=1200)%>%
+  fabletools::forecast(h=1400)%>%
   hilo(level=95)%>%
   unpack_hilo("95%")
 
@@ -396,7 +394,7 @@ colnames(predictions2)[4] = "point_prediction"
 #Filter for 420ppm with some tolerance since these are doubles
 ppm420 <- predictions2 %>% 
   as.data.frame()%>%
-  filter((point_prediction <= 422) & (point_prediction >= 419) )
+  filter((point_prediction <= 422) & (point_prediction >= 417) )
 #ppm420[2:4]
 
 #Filter for 500ppm with some tolerance since these are doubles
@@ -414,7 +412,7 @@ predictions2%>%
   geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper), alpha = 0.1)+
   geom_hline(aes(yintercept = 420, color = "420ppm"), linetype = "dashed")+
   geom_hline(aes(yintercept = 500, color = "500ppm"), linetype = "dashed")+
-  labs(title = "Predictions for Co2 levels (1998-2060)", 
+  labs(title = "Predictions for Co2 levels (1998-2113)", 
        color = " ")+
   ylab("Date")+
   xlab("Prediction CO2 Level (ppm)")
@@ -548,14 +546,14 @@ p_arima <- ggplot() +
 p_arima
 ```
 
-The ARIMA model  deviates from the actual values. The model values are similar until 2000, though the model does tend to underestimate the CO2 levels even during this time period. The model really deviates from the actual values at around 2003, as it starts to severely underestimate the CO2 levels. It appears that the keeling curve has shown some acceleration in the increase of the mean over time, and this might explain the gap between the ARIMA model performance and the true CO2 levels.
+The ARIMA model  deviates from the actual values. The model values are similar until 2000, though the model does tend to underestimate the CO2 levels even during this time period. The model really deviates from the actual values at around 2003, as it starts to severely underestimate the CO2 levels. It appears that the keeling curve has shown some acceleration in the increase of the mean over time, and this might explain the increasing gap between the ARIMA model performance and the true CO2 levels as we move away from 1997.
 
 
 ## (3 points) Task 4b: Evaluate the performance of 1997 linear and ARIMA models 
 
 In 1997 you made predictions about the first time that CO2 would cross 420 ppm. How close were your models to the truth? 
 
-In 1997 we predicted that the CO2 levels would cross 420ppm at around April 2031, but from the actual data we can see that the CO2 levels cross 420ppm by February 2022, which is an almost 10 year difference.
+In 1997 we predicted that the CO2 levels would cross 420ppm at around April 2038, but from the actual data we can see that the CO2 levels cross 420ppm by February 2022, which is an about a 15 year difference. This is in-line with what we observed in our ARIMA model predictions as the  ARIMA model was underestimating the CO2 levels in comparison to the actual CO2 levels.
 ```{r}
 #Filter for 420ppm with some tolerance since these are doubles
 # cross 420 ppm by 2022 Feb
@@ -567,7 +565,8 @@ ppm420 <- co2_present %>%
 ```
 
 
-After reflecting on your performance on this threshold-prediction task, continue to use the weekly data to generate a month-average series from 1997 to the present, and compare the overall forecasting performance of your models from Parts 2a and 3b over the entire period. (You should conduct formal tests for this task.) 
+We can also assess the overall performance of our model using a test metric such as the RMSE. The RMSE is the root mean squared error and is a metric that captures on average how far our predictions are from the actual values. It is calculated with the formula $\sqrt{\sum_{i=1}^{N}\frac{(y_{i}-\hat{y}_i)}{N}}$ where N is the number of observations, $y_i$ is the ith actual CO2 value and $\hat{y}_i$ is the ith CO2 prediction -- in essence we are squaring the sum of the differences between the actual and predicted values, and then dividing by the number of observations before taking the square root. When we calculate the RMSE for our two models of interest we can see that the ARIMA model performs worse than the quadratic seasonal model by an order of roughly 10. The Quadratic Seasonal model's RMSE is 0.79235, meaning that on average the Quadratic Seasonal model prediction is off by about 0.79235 ppm. By contrast the ARIMA model RMSE is 8.6259 meaning that on average the ARIMA model is off by acout 8.6259 ppm. 
+
 ```{r}
 # Use RMSE as a formal test to evaluate the models 
 
@@ -580,14 +579,13 @@ print(cat("Quadratic Seasonal Model RMSE =", rmse_lin))
 print(cat("ARIMA model RMSE =", rmse_arima))
 ```
 
-We can see that the ARIMA model performs worse than the quadratic seasonal model by an order of roughly 10. On average the Quadratic Seasonal model prediction is off by about 0.79235 ppm and on average the ARIMA model is off by acout 8.6259 ppm. 
 
 ## (4 points) Task 5b: Train best models on present data
 
 Seasonally adjust the weekly NOAA data, and split both seasonally-adjusted (SA) and non-seasonally-adjusted (NSA) series into training and test sets, using the last two years of observations as the test sets. For both SA and NSA series, fit ARIMA models using all appropriate steps. Measure and discuss how your models perform in-sample and (psuedo-) out-of-sample, comparing candidate models and explaining your choice. In addition, fit a polynomial time-trend model to the seasonally-adjusted series and compare its performance to that of your ARIMA model.
 
 
-```{r}
+```{r, warnings = FALSE}
 # Seasonally adjust the data
 co2_present_sa <- setNames(aggregate(co2_present$average, by=list(year(co2_present$time_index)), mean), 
                       c("year", "yr_co2"))
@@ -725,7 +723,7 @@ co2_present_pred_graph
 
 ```{r}
 
-co2_2122 <- co2_present_prediction %>% filter(year(by_month) == 2122)
+co2_2122 <- co2_present_prediction %>% filter(year(time_index) == 2122)
 mean(co2_2122$.mean)
 
 ```
